@@ -17,12 +17,15 @@ jobs:
           brew update -q
           brew install -q sdl2 libpng portmidi portaudio readline
 
-      - name: Build hatari
+      - name: Setup build
         run: |
           mkdir -p build
           cd build
           cmake ../
+      - name: Build
           make
+
+      - name: Post-build
           chmod +x src/hatari.app/Contents/MacOS/hatari
           cd ../
           mkdir -p output
