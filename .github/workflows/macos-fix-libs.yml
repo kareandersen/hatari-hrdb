@@ -1,7 +1,8 @@
-name: MacOS Build
-run-name: ${{ github.actor }} / ${{ github.event_name }} / ${{ github.sha }}
+name: MacOS fix libs
+run-name:
+  ${{ github.actor }} / ${{ github.event_name }} / ${{ github.sha }}
 
-# Controls when the workflow will run
+  # Controls when the workflow will run
 on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch
@@ -13,74 +14,75 @@ jobs:
     runs-on: macos-12
 
     steps:
-      -uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-      -uses: actions/download-artifact@v3
-       with:
-         name: hatari-macos-x64
+      - uses: actions/download-artifact@v3
+        with:
+          name: hatari-macos-x64
+          path: output/
 
-      -name: Fix libraries
-          run: |
-            echo "Output folder now contains:"
-            find ./output
-            echo "-------"
+      - name: Fix libraries
+        run: |
+          echo "Output folder now contains:"
+          find ./output
+          echo "-------"
 
-            export OTOOL=/usr/bin/otool
-            export SOURCEDIR=`brew --prefix`/lib
-            export CONTENTDIR=./output/hatari.app/Contents
-            export EXECUTABLE="$CONTENTDIR/MacOS/hatari"
-            export TARGETDIR="$CONTENTDIR/Frameworks"
+          export OTOOL=/usr/bin/otool
+          export SOURCEDIR=`brew --prefix`/lib
+          export CONTENTDIR=./output/hatari.app/Contents
+          export EXECUTABLE="$CONTENTDIR/MacOS/hatari"
+          export TARGETDIR="$CONTENTDIR/Frameworks"
 
-            mkdir -p ${TARGETDIR}
+          mkdir -p ${TARGETDIR}
 
-            echo "Looking for libs that need fixing in executable $EXECUTABLE"
-            ${OTOOL} -l ${EXECUTABLE} \
-              | awk '/dylib/&&!/\usr\/lib/{print $2}' \
-              | sed 's:.*/::' \
-              > /tmp/libs.txt
+          echo "Looking for libs that need fixing in executable $EXECUTABLE"
+          ${OTOOL} -l ${EXECUTABLE} \
+          | awk '/dylib/&&!/\usr\/lib/{print $2}' \
+          | sed 's:.*/::' \
+          > /tmp/libs.txt
 
-            echo "Detected libs that needs fixing:"
-            cat /tmp/libs.txt
-            echo "---"
+          echo "Detected libs that needs fixing:"
+          cat /tmp/libs.txt
+          echo "---"
 
-            while read lib; do
-              echo "copying $SOURCEDIR/$lib -> $TARGETDIR/$lib"
-              cp ${SOURCEDIR}/$lib ${TARGETDIR}
+          while read lib; do
+          echo "copying $SOURCEDIR/$lib -> $TARGETDIR/$lib"
+          cp ${SOURCEDIR}/$lib ${TARGETDIR}
 
-              TARGET="$TARGETDIR/$lib"
-              ORIGINAL_ID=`${OTOOL} -DX ${TARGET}`
-              NEW_FILE=`basename ${TARGET}`
-              NEW_ID="@executable_path/../$NEW_FILE"
+          TARGET="$TARGETDIR/$lib"
+          ORIGINAL_ID=`${OTOOL} -DX ${TARGET}`
+          NEW_FILE=`basename ${TARGET}`
+          NEW_ID="@executable_path/../$NEW_FILE"
 
-              echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID"
-              install_name_tool -id ${NEW_ID} ${TARGET}
-              install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${EXECUTABLE}
-              #echo "signing libs using self signed certificate (for now)"
-              #codesign -s "atari.ephidrena.net" --force $TARGET
-            done < /tmp/libs.txt
+          echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID"
+          install_name_tool -id ${NEW_ID} ${TARGET}
+          install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${EXECUTABLE}
+          #echo "signing libs using self signed certificate (for now)"
+          #codesign -s "atari.ephidrena.net" --force $TARGET
+          done < /tmp/libs.txt
 
-        #        run: |
-        #          brew install qt5
-        #          cd tools/hrdb
-        #          qmake .
-        #          make
-        #          chmod +x hrdb.app/Contents/MacOS/hrdb
-        #      - name: Package hrdb
-        #        run: |
-        #           cd tools/hrdb
-        #           macdeployqt hrdb.app
-        #           ls -Rl *
-        #           mv hrdb.app ../../output/
-        #
-        - name: zip outputs
-          run: |
-            cd output
-            #cp ../tools/hrdb/docs/hrdb_release_notes.txt .
-            cp ../gpl.txt .
-            #zip -r macos-hrdb.zip hrdb.app hatari.app *.txt
-            zip -r test0-hatari.zip hatari.app *.txt
-        - name: Upload artifacts
-          uses: actions/upload-artifact@v2
-          with:
-            name: hrdb-${{ github.sha }}
-            path: output/test0-hatari.zip
+          #        run: |
+          #          brew install qt5
+          #          cd tools/hrdb
+          #          qmake .
+          #          make
+          #          chmod +x hrdb.app/Contents/MacOS/hrdb
+          #      - name: Package hrdb
+          #        run: |
+          #           cd tools/hrdb
+          #           macdeployqt hrdb.app
+          #           ls -Rl *
+          #           mv hrdb.app ../../output/
+          #
+          - name: zip outputs
+            run: |
+              cd output
+              #cp ../tools/hrdb/docs/hrdb_release_notes.txt .
+              cp ../gpl.txt .
+              #zip -r macos-hrdb.zip hrdb.app hatari.app *.txt
+              zip -r test0-hatari.zip hatari.app *.txt
+          - name: Upload artifacts
+            uses: actions/upload-artifact@v2
+            with:
+              name: hrdb-${{ github.sha }}
+              path: output/test0-hatari.zip

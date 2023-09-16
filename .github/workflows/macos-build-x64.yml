@@ -1,8 +1,7 @@
-name: MacOS Build
+name: MacOS Build x64
 run-name: ${{ github.actor }} / ${{ github.event_name }} / ${{ github.sha }}
 
-on:
-  workflow_dispatch
+on: workflow_dispatch
 
 permissions: read-all
 
@@ -11,23 +10,20 @@ jobs:
     runs-on: macos-12
 
     steps:
-        - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-        - name: Install hatari libs and tools
-          run: |
-            brew install cmake sdl2 libpng portmidi portaudio readline
+      - name: Install hatari libs and tools
+        run: |
+          brew install cmake sdl2 libpng portmidi portaudio readline
 
-        - name: Build hatari
-          run: |
-            mkdir -p build
-            cd build
-            cmake ../
-            make
-            mv ./src/hatari.app ../output/hatari.app
-            ls -la ../output/
+      - name: Build hatari
+        run: |
+          mkdir -p build
+          cd build
+          cmake ../
+          make
 
-        - uses: actions/upload-artifact@v3
-          with:
-            name: hatari-macos-x64
-            path: ./output/hatari.app/
-
+      - uses: actions/upload-artifact@v3
+        with:
+          name: hatari-macos-x64
+          path: build/src/hatari.app/
