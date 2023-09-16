@@ -27,15 +27,15 @@ jobs:
             cd build
             cmake ../
             make
+            mv ./src/hatari.app output/
 
         - name: Fix libraries
           env:
             OTOOL: /usr/bin/otool
-            CONTENTDIR: ./src/hatari.app/Contents
+            CONTENTDIR: output/hatari.app/Contents
             EXECUTABLE: $CONTENTDIR/MacOS/hatari
             TARGETDIR: $CONTENTDIR/Frameworks
             LIBDIR: "@executable_path/../Frameworks"
-            OUTDIR: ../../output
 
           run: |
             SOURCEDIR=`brew --prefix`/lib
@@ -66,8 +66,6 @@ jobs:
               #codesign -s "atari.ephidrena.net" --force $TARGET
             done < /tmp/libs.txt
 
-            mv src/hatari.app ${OUTDIR}/
-        #      - name: Install hrdb libs and tools
         #        run: |
         #          brew install qt5
         #          cd tools/hrdb
