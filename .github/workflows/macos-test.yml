@@ -30,17 +30,17 @@ jobs:
             mv ./src/hatari.app output/
 
         - name: Fix libraries
-          env:
-            OTOOL: /usr/bin/otool
-            CONTENTDIR: output/hatari.app/Contents
-            EXECUTABLE: $CONTENTDIR/MacOS/hatari
-            TARGETDIR: $CONTENTDIR/Frameworks
-            LIBDIR: "@executable_path/../Frameworks"
-
           run: |
+            OTOOL=/usr/bin/otool
+            CONTENTDIR=output/hatari.app/Contents
+            EXECUTABLE=CONTENTDIR/MacOS/hatari
+            TARGETDIR=$CONTENTDIR/Frameworks
+            LIBDIR="@executable_path/../Frameworks"
             SOURCEDIR=`brew --prefix`/lib
+
             mkdir -p ${TARGETDIR}
 
+            echo "Looking for libs that need fixing in executable $EXECUTABLE"
             ${OTOOL} -l ${EXECUTABLE} \
               | awk '/dylib/&&!/\usr\/lib/{print $2}' \
               | sed 's:.*/::' \
