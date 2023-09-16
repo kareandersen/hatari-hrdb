@@ -1,69 +1,95 @@
-# Macos Build
-
-name: macos-build-hrdb
+name: MacOS Build
+run-name: ${{ github.actor }} / ${{ github.event_name }} / ${{ github.sha }}
 
 # Controls when the workflow will run
 on:
   # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+  workflow_dispatch
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+permissions: read-all
+
 jobs:
-  # This workflow contains a single job called "build"
   build:
-    # The type of runner that the job will run on
-    runs-on: macos-11
+    runs-on: macos-12
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v2
+        # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+        - uses: actions/checkout@v3
 
-      # Runs a set of commands using the runners shell
-      - name: Install libs
-        run: |
-           brew install qt5
-           brew install sdl2
-           echo "/usr/local/opt/qt@5/bin" >> $GITHUB_PATH
-           echo "Qt5_DIR=/usr/local/opt/qt@5/lib/cmake/Qt5" >> $GITHUB_ENV
-           mkdir output
-           curl -O https://www.libsdl.org/release/SDL2-2.0.18.dmg
-           hdiutil attach SDL2-2.0.18.dmg
-           ls -Rl /Volumes/SDL2/
-      - name: Build hatari
-        run: |
-          ./configure
-          make -j 2
-          cd src
-          ls -Rl
-          chmod +x hatari.app/Contents/MacOS/hatari
-          mkdir hatari.app/Contents/Frameworks
-          cp -R /Volumes/SDL2/SDL2.framework hatari.app/Contents/Frameworks
-          mv hatari.app ../output/
-      - name: build hrdb
-        run: |
-          export
-          cd tools/hrdb
-          qmake .
-          make
-          chmod +x hrdb.app/Contents/MacOS/hrdb
-      - name: package
-        run: |
-           cd tools/hrdb
-           macdeployqt hrdb.app
-           ls -Rl *
-           mv hrdb.app ../../output/
-      - name: zip outputs
-        run: |
-          cd output
-          cp ../tools/hrdb/docs/hrdb_release_notes.txt .
-          cp ../gpl.txt .
-          zip -r macos-hrdb.zip hrdb.app hatari.app *.txt      
-      - name: "Upload artifacts"
-        uses: actions/upload-artifact@v2
-        with:
-          name: hrdb-${{ github.sha }}
-          path: output/macos-hrdb.zip
-          
-          
-           
+        # Runs a set of commands using the runners shell
+        - name: Install hatari libs and tools
+          run: |
+            brew install cmake sdl2 libpng portmidi portaudio readline
+        - name: Build hatari
+          run: |
+            mkdir -p build
+            cd build
+            cmake ../
+            make
+
+        - name: Fix libraries
+          env:
+            OTOOL: /usr/bin/otool
+            CONTENTDIR: ./src/hatari.app/Contents
+            EXECUTABLE: $CONTENTDIR/MacOS/hatari
+            TARGETDIR: $CONTENTDIR/Frameworks
+            LIBDIR: "@executable_path/../Frameworks"
+            OUTDIR: ../../output
+
+          run: |
+            SOURCEDIR=`brew --prefix`/lib
+            mkdir -p ${TARGETDIR}
+
+            ${OTOOL} -l ${EXECUTABLE} \
+              | awk '/dylib/&&!/\usr\/lib/{print $2}' \
+              | sed 's:.*/::' \
+              > /tmp/libs.txt
+
+            echo "Detected libs that needs fixing:"
+            cat /tmp/libs.txt
+            echo "---"
+
+            while read lib; do
+              echo "copying $SOURCEDIR/$lib -> $TARGETDIR/$lib"
+              cp ${SOURCEDIR}/$lib ${TARGETDIR}
+
+              TARGET="$TARGETDIR/$lib"
+              NEW_FILE=`basename ${TARGET}`
+              ORIGINAL_ID=`${OTOOL} -DX ${TARGET}`
+              NEW_ID=${LIBDIR}/${NEW_FILE}
+
+              echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID"
+              install_name_tool -id ${NEW_ID} ${TARGET}
+              install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${EXECUTABLE}
+              #echo "signing libs using self signed certificate (for now)"
+              #codesign -s "atari.ephidrena.net" --force $TARGET
+            done < /tmp/libs.txt
+
+            mv src/hatari.app ${OUTDIR}/
+        #      - name: Install hrdb libs and tools
+        #        run: |
+        #          brew install qt5
+        #          cd tools/hrdb
+        #          qmake .
+        #          make
+        #          chmod +x hrdb.app/Contents/MacOS/hrdb
+        #      - name: Package hrdb
+        #        run: |
+        #           cd tools/hrdb
+        #           macdeployqt hrdb.app
+        #           ls -Rl *
+        #           mv hrdb.app ../../output/
+        #
+        - name: zip outputs
+          run: |
+            cd output
+            #cp ../tools/hrdb/docs/hrdb_release_notes.txt .
+            cp ../gpl.txt .
+            #zip -r macos-hrdb.zip hrdb.app hatari.app *.txt
+            zip -r test0-hatari.zip hatari.app *.txt
+        - name: Upload artifacts
+          uses: actions/upload-artifact@v2
+          with:
+            name: hrdb-${{ github.sha }}
+            path: output/test0-hatari.zip
