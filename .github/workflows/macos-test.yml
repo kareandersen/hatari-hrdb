@@ -27,13 +27,19 @@ jobs:
             cd build
             cmake ../
             make
-            mv ./src/hatari.app output/
+            find ./src/hatari.app
+            mv ./src/hatari.app ../output/
+            ls -la ../output/
 
         - name: Fix libraries
           run: |
+            echo "Output folder now contains:"
+            find ./output
+            echo "-------"
+
             export OTOOL=/usr/bin/otool
             export SOURCEDIR=`brew --prefix`/lib
-            export CONTENTDIR=output/hatari.app/Contents
+            export CONTENTDIR=./output/hatari.app/Contents
             export EXECUTABLE="$CONTENTDIR/MacOS/hatari"
             export TARGETDIR="$CONTENTDIR/Frameworks"
 
