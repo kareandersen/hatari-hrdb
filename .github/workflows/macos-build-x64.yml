@@ -1,4 +1,4 @@
-name: MacOS Build x64
+name: Build Hatari for MacOS-x64
 run-name: ${{ github.actor }} / ${{ github.event_name }} / ${{ github.sha }}
 
 on: workflow_dispatch
@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install hatari libs and tools
+      - name: Install libs and tools
         run: |
           brew update -q
           brew install -q sdl2 libpng portmidi portaudio readline
@@ -30,9 +30,6 @@ jobs:
 
       - name: Post-build
         run: |
-          cd build
-          chmod +x src/hatari.app/Contents/MacOS/hatari
-          cd ../
           mkdir -p output
           mv build/src/hatari.app output/hatari.app
 

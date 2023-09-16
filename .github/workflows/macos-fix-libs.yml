@@ -2,9 +2,7 @@ name: MacOS fix libs
 run-name:
   ${{ github.actor }} / ${{ github.event_name }} / ${{ github.sha }}
 
-  # Controls when the workflow will run
 on:
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch
 
 permissions: read-all
@@ -20,8 +18,10 @@ jobs:
         run: |
           mkdir -p output
 
-      - uses: actions/download-artifact@v3
+      - uses: dawidd6/action-download-artifact@v2
         with:
+          workflow: macos-build-x64.yml
+          workflow_conclusion: success
           name: hatari-macos-x64-${{ github.sha }}
           path: output/
 
