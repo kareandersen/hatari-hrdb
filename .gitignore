@@ -43,3 +43,6 @@ Debug/*
 .cproject
 .project
 .settings/
+
+# MacOS junk
+.DS_Store
