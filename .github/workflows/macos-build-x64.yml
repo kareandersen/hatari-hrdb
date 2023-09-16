@@ -14,6 +14,7 @@ jobs:
 
       - name: Install hatari libs and tools
         run: |
+          brew update -q
           brew install -q sdl2 libpng portmidi portaudio readline
 
       - name: Build hatari
@@ -22,6 +23,7 @@ jobs:
           cd build
           cmake ../
           make
+          chmod +x src/hatari.app/Contents/MacOS/hatari
           cd ../
           mkdir -p output
           mv build/src/hatari.app output/hatari.app
