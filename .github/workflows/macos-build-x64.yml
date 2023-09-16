@@ -14,7 +14,7 @@ jobs:
 
       - name: Install hatari libs and tools
         run: |
-          brew install cmake sdl2 libpng portmidi portaudio readline
+          brew install -q sdl2 libpng portmidi portaudio readline
 
       - name: Build hatari
         run: |
