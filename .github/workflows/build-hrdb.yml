@@ -1,0 +1,35 @@
+name: Build hrdb for MacOS-x64
+run-name:
+  ${{ github.actor }} / ${{ github.event_name }} / ${{ github.sha }}
+
+on:
+  workflow_dispatch
+
+permissions: read-all
+
+jobs:
+  build:
+    runs-on: macos-12
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create output directory
+        run: |
+          mkdir -p output
+
+    run: |
+      brew install qt5
+      cd tools/hrdb
+      qmake .
+      make
+  - name: Package hrdb
+    run: |
+       cd tools/hrdb
+       macdeployqt hrdb.app
+       ls -Rl *
+       mv hrdb.app ../../output/
+
+
+        #cp ../tools/hrdb/docs/hrdb_release_notes.txt .
+
