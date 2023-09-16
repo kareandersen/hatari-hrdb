@@ -16,9 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Create output directory
+        run: |
+          mkdir -p output
+
       - uses: actions/download-artifact@v3
         with:
-          name: hatari-macos-x64
+          name: hatari-macos-x64-${{ github.sha }}
           path: output/
 
       - name: Fix libraries
