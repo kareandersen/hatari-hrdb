@@ -22,12 +22,15 @@ jobs:
           mkdir -p build
           cd build
           cmake ../
+
       - name: Build
         run: |
+          cd build
           make
 
       - name: Post-build
         run: |
+          cd build
           chmod +x src/hatari.app/Contents/MacOS/hatari
           cd ../
           mkdir -p output
