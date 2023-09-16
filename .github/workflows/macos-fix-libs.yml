@@ -22,8 +22,13 @@ jobs:
         with:
           workflow: macos-build-x64.yml
           workflow_conclusion: success
-          name: hatari-macos-x64-${{ github.sha }}
+          name: hatari-macos-x64
           path: output/
+
+      - name: Install libs
+        run: |
+          brew update -q
+          brew install -q sdl2 libpng portmidi portaudio readline
 
       - name: Fix libraries
         run: |

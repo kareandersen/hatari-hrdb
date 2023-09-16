@@ -35,5 +35,5 @@ jobs:
 
       - uses: actions/upload-artifact@v3
         with:
-          name: hatari-macos-x64-${{ github.sha }}
+          name: hatari-macos-x64
           path: output
