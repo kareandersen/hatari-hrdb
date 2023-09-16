@@ -22,8 +22,11 @@ jobs:
           cd build
           cmake ../
           make
+          cd ../
+          mkdir -p output
+          mv build/src/hatari.app output/hatari.app
 
       - uses: actions/upload-artifact@v3
         with:
           name: hatari-macos-x64
-          path: build/src/hatari.app
+          path: output
