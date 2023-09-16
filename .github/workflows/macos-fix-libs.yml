@@ -28,6 +28,12 @@ jobs:
           brew update -q
           brew install -q sdl2 libpng portmidi portaudio readline
 
+      - name: Setup keychain
+        uses: mskelton/macos-certs@v1
+        env:
+          CERT_P12: ${{ secrets.CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+
       - name: Fix libraries
         run: |
           export OTOOL=/usr/bin/otool
@@ -60,9 +66,11 @@ jobs:
             echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID"
             install_name_tool -id ${NEW_ID} ${TARGET}
             install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${EXECUTABLE}
-            #echo "signing libs using self signed certificate (for now)"
-            #codesign -s "atari.ephidrena.net" --force $TARGET
+            echo "signing libs using self signed certificate (for now)"
+            codesign -s "atari.ephidrena.net" --force $TARGET
           done < /tmp/libs.txt
+
+          codesign -s "atari.ephidrena.net" --force ${EXECUTABLE}
 
       - name: Fix executable permission
         run: |
