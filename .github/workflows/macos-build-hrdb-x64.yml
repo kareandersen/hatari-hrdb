@@ -18,8 +18,9 @@ jobs:
 
       - name: Install qt5
         run: |
-          brew install qt5
+          brew install qt5 libpng
           brew link qt5 --force
+          brew link libpng --force
 
       - name: Build hrdb
         run: |
