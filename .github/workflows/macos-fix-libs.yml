@@ -224,6 +224,7 @@ jobs:
             TARGET="$TARGETDIR/$FILENAME"
             NEW_ID="@executable_path/../Frameworks/$FILENAME"
 
+            echo "copying $SOURCEDIR/$FILENAME -> $TARGETDIR/$FILENAME"
             cp "$SOURCEDIR/$FILENAME" ${TARGETDIR}/
 
             echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID FOR $DYLIB"
