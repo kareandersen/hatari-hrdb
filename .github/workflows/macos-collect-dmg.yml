@@ -30,9 +30,10 @@ jobs:
           cd work
           tar -xvf ../input/hatari.app.tar
 
-      - name: List work directory contents (debug)
+      - name: Remove quarantine
         run: |
-          find work
+          cd work
+          xattr -d com.apple.quarantine hatari.app
 
       - name: Install tools
         run: |
