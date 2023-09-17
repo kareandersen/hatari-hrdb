@@ -37,7 +37,7 @@ jobs:
       - name: Tar hrdb
         run: |
           cd output
-          tar -cvf hrdb-macos-x64.tar hrdb.app tools/hrdb/docs/hrdb_release_notes.txt
+          tar -cvf hrdb-macos-x64.tar hrdb.app ../tools/hrdb/docs/hrdb_release_notes.txt
 
       - uses: actions/upload-artifact@v3
         with:
