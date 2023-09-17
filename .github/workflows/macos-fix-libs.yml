@@ -182,7 +182,7 @@ jobs:
           export CONTENTDIR=./output/hrdb.app/Contents
           export EXECUTABLE="$CONTENTDIR/MacOS/hrdb"
           export TARGETDIR="$CONTENTDIR/Frameworks"
-          otool -L ${TARGETDIR}/QtCore.framework/Versions/5/QtCore | awk '/dylib/&&!/\/usr\/lib/{print $1}' > /tmp/qtlibs.txt
+          otool -L ${TARGETDIR}/QtCore.framework/Versions/5/QtCore | awk '/dylib/&&!/\/usr\/lib/{print $1}' | sed 's:.*/::' > /tmp/qtlibs.txt
 
           while read lib; do
             echo "copying $SOURCEDIR/$lib -> $TARGETDIR/$lib"
