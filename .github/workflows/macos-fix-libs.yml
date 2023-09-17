@@ -184,7 +184,7 @@ jobs:
           export CONTENTDIR=./output/hrdb.app/Contents
           export TARGETDIR="$CONTENTDIR/Frameworks"
           export DYLIB="$TARGETDIR/QtCore.framework/Versions/5/QtCore"
-          ${OTOOL} -L ${DYLIB} | awk '/dylib/&&!/\/usr\/lib/{print $1}' | sed 's:.*/::' > /tmp/qtlibs.txt
+          ${OTOOL} -L ${DYLIB} | awk '/dylib/&&!/\/usr\/lib/{print $1}' > /tmp/qtlibs.txt
 
           echo "QtCore libs to fix:"
           cat /tmp/qtlibs.txt
@@ -192,13 +192,14 @@ jobs:
           while read lib; do
             echo "copying $SOURCEDIR/$lib -> $TARGETDIR/$lib"
             cp ${SOURCEDIR}/$lib ${TARGETDIR}
+            BASENAME=`basename ${lib}`
 
-            TARGET="$TARGETDIR/$lib"
-            ORIGINAL_ID=`${OTOOL} -DX ${TARGET}`
+            TARGET="$TARGETDIR/$BASENAME"
+            ORIGINAL_ID=${lib}
             FILENAME=`basename ${TARGET}`
             NEW_ID="@executable_path/../Frameworks/$FILENAME"
 
-            echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID"
+            echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID FOR $DYLIB"
             install_name_tool -id ${NEW_ID} ${TARGET}
             install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${DYLIB}
             echo "signing libs using self signed certificate (for now)"
