@@ -1,0 +1,50 @@
+name: Collect MacOS software and create dmg
+run-name: ${{ github.actor }} / ${{ github.event_name }} / ${{ github.sha }}
+
+on: workflow_dispatch
+
+permissions: read-all
+
+jobs:
+  build:
+    runs-on: macos-12
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create output directory
+        run: |
+          mkdir -p output
+
+      - uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: macos-fix-libs.yml
+          workflow_conclusion: success
+          name: hatari-macos-x64-fixed
+          path: output/
+
+      - name: List contents (debug)
+          run: |
+            find output
+
+      - name: Install tools
+        run: |
+          brew update -q
+          brew install -q create-dmg
+
+      - name: Create dmg
+        run: |
+          create-dmg \
+            --volname "Hatari HRDB Development Build" \
+            --icon "hatari.app" \
+            "Hatari-HRDB-Development.dmg" \
+            "output/"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: hatari-hrdb-development-${{ github.sha }}.dmg
+          path: output/Hatari-HRDB-Development.dmg
+
+
+ 
