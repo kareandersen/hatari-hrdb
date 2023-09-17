@@ -158,6 +158,23 @@ jobs:
 
           codesign -s "atari.ephidrena.net" --force ${EXECUTABLE} --verbose
 
+      - name: Fix QtGui libpng
+        run: |
+          export OTOOL=/usr/bin/otool
+          export SOURCEDIR=`brew --prefix`/lib
+          export CONTENTDIR=./output/hrdb.app/Contents
+          export EXECUTABLE="$CONTENTDIR/MacOS/hrdb"
+          export TARGETDIR="$CONTENTDIR/Frameworks"
+
+          export ORIG_LIBPNG=`otool -L ${TARGETDIR}/QtGui.framework/Versions/5/QtGui | awk '/libpng/{print $1}'`
+          export BASENAME=`basename ${ORIG_LIBPNG}`
+          export NEW_LIBPNG="@executable_path/../Frameworks/${BASENAME}"
+          cp "$SOURCEDIR/$BASENAME" "$TARGETDIR"
+          install_name_tool -id ${NEW_LIBPNG} ${TARGETDIR}/$BASENAME
+          install_name_tool -change ${ORIG_LIBPNG} ${NEW_LIBPNG} ${TARGETDIR}/QtGui.framework/Versions/5/QtGui
+          codesign -s "atari.ephidrena.net" --force ${TARGETDIR}/$BASENAME --verbose
+          codesign -s "atari.ephidrena.net" --force ${TARGETDIR}/QtGui.framework/Versions/5/QtGui --verbose
+
       - name: Fix executable permission
         run: |
           chmod +x output/hrdb.app/Contents/MacOS/hrdb
