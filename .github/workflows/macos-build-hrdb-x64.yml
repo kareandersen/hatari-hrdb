@@ -24,6 +24,12 @@ jobs:
 
       - name: Build hrdb
         run: |
+          export BREW_PREFIX_QT5=$(brew --prefix qt5)
+          export PATH="$BREW_PREFIX_QT5/bin:$PATH"
+          export LDFLAGS="-L$BREW_PREFIX_QT5/lib"
+          export CPPFLAGS="-I$BREW_PREFIX_QT5/include"
+          export PKG_CONFIG_PATH="$BREW_PREFIX_QT5/lib/pkgconfig"
+
           cd tools/hrdb
           qmake .
           make
