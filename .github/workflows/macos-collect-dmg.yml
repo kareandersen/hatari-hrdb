@@ -15,6 +15,7 @@ jobs:
       - name: Create directories
         run: |
           mkdir -p input
+          mkdir -p work
           mkdir -p output
 
       - uses: dawidd6/action-download-artifact@v2
@@ -24,14 +25,14 @@ jobs:
           name: hatari-macos-x64-fixed
           path: input/
 
-      - name: Untar files
+      - name: Untar files to work directory
         run: |
-          cd output
+          cd work
           tar -xvf ../input/hatari.app.tar
 
-      - name: List contents (debug)
+      - name: List work directory contents (debug)
         run: |
-          find output
+          find work
 
       - name: Install tools
         run: |
@@ -40,7 +41,7 @@ jobs:
 
       - name: Create dmg
         run: |
-          cp output/hatari.app/Contents/Resources/Hatari.icns ./
+          cp work/hatari.app/Contents/Resources/Hatari.icns ./
           create-dmg \
             --volname "Hatari HRDB Development Build" \
             --volicon "Hatari.icns" \
@@ -48,8 +49,8 @@ jobs:
             --hide-extension "hatari.app" \
             --app-drop-link 300 120 \
             --icon-size 100 \
-            Hatari-HRDB-Development.dmg \
-            output/
+            output/Hatari-HRDB-Development.dmg \
+            work/
 
       - name: Show dmg info (debug)
         run: |
