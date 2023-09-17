@@ -23,6 +23,10 @@ jobs:
           name: hatari-macos-x64-fixed
           path: output/
 
+      - name: Untar files
+        run: |
+          tar -xvf output/hatari.app.tar
+
       - name: List contents (debug)
         run: |
           find output
@@ -34,11 +38,16 @@ jobs:
 
       - name: Create dmg
         run: |
+          cp output/hatari.app/Contents/Resources/Hatari.icns ./
           create-dmg \
             --volname "Hatari HRDB Development Build" \
-            --icon "hatari.app" \
-            "Hatari-HRDB-Development.dmg" \
-            "output/"
+            --volicon "Hatari.icns"
+            --icon "hatari.app" 100 120 \
+            --hide-extension "hatari.app" \
+            --app-drop-link 300 120 \
+            --icon-size 100 \
+            Hatari-HRDB-Development.dmg \
+            output/
 
       - name: Show dmg info (debug)
         run: |
