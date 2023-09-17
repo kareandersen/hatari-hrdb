@@ -198,13 +198,41 @@ jobs:
             echo "copying $SOURCEDIR/$FILENAME -> $TARGETDIR/$FILENAME"
             cp "$SOURCEDIR/$FILENAME" ${TARGETDIR}/
 
-
             echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID FOR $DYLIB"
             install_name_tool -id ${NEW_ID} ${TARGET}
             install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${DYLIB}
             echo "signing libs using self signed certificate (for now)"
             codesign -s "atari.ephidrena.net" --force $TARGET --verbose
           done < /tmp/qtlibs.txt
+
+      - name: Fix libglib
+        run: |
+          export OTOOL=/usr/bin/otool
+          export SOURCEDIR=`brew --prefix`/lib
+          export CONTENTDIR=./output/hrdb.app/Contents
+          export DYLIB="$CONTENTDIR/Frameworks/libglib-2.0.0.dylib"
+          export TARGETDIR="$CONTENTDIR/Frameworks"
+          export ORIGINAL_ID=`${OTOOL} -DX ${DYLIB}`
+          ${OTOOL} -L ${DYLIB} | awk '/dylib/&&!/\/usr\/lib/{print $1}' > /tmp/glibs.txt
+
+          echo "libglib libs to fix:"
+          cat /tmp/glibs.txt
+
+          while read lib; do
+            ORIGINAL_ID=${lib}
+            FILENAME=`basename ${ORIGINAL_ID}`
+            TARGET="$TARGETDIR/$FILENAME"
+            NEW_ID="@executable_path/../Frameworks/$FILENAME"
+
+            echo "copying $SOURCEDIR/$FILENAME -> $TARGETDIR/$FILENAME"
+            cp "$SOURCEDIR/$FILENAME" ${TARGETDIR}/
+
+            echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID FOR $DYLIB"
+            install_name_tool -id ${NEW_ID} ${TARGET}
+            install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${DYLIB}
+            echo "signing libs using self signed certificate (for now)"
+            codesign -s "atari.ephidrena.net" --force $TARGET --verbose
+          done < /tmp/glibs.txt
 
 
       - name: Fix executable permission
