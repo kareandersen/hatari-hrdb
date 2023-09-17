@@ -24,8 +24,8 @@ jobs:
           path: output/
 
       - name: List contents (debug)
-          run: |
-            find output
+        run: |
+          find output
 
       - name: Install tools
         run: |
@@ -40,11 +40,12 @@ jobs:
             "Hatari-HRDB-Development.dmg" \
             "output/"
 
+      - name: Show dmg info (debug)
+        run: |
+          hdiutil imageinfo output/Hatari-HRDB-Development.dmg
+
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
           name: hatari-hrdb-development-${{ github.sha }}.dmg
           path: output/Hatari-HRDB-Development.dmg
-
-
- 
