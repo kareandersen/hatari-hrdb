@@ -1,4 +1,4 @@
-name: Fix hatari libs for MacOS-x64
+name: Fix hatari and hrdb libs for MacOS-x64
 run-name: ${{ github.actor }} / ${{ github.event_name }} / ${{ github.sha }}
 
 on: workflow_dispatch
@@ -6,7 +6,7 @@ on: workflow_dispatch
 permissions: read-all
 
 jobs:
-  build:
+  fix-hatari:
     runs-on: macos-12
 
     steps:
@@ -87,3 +87,88 @@ jobs:
           name: hatari-macos-x64-fixed
           path: output/hatari.app.tar
 
+  fix-hrdb:
+    runs-on: macos-12
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Create output directory
+        run: |
+          mkdir -p output
+
+      - uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: macos-build-hrdb-x64.yml
+          workflow_conclusion: success
+          name: hrdb-macos-x64
+          path: output/
+
+      - name: Untar hrdb
+        run: |
+          cd output
+          tar -xvf hrdb-macos-x64.tar
+
+      - name: Install libs
+        run: |
+          brew update -q
+          brew install -q libpng
+
+      - name: Setup keychain
+        uses: mskelton/macos-certs@v1
+        env:
+          CERT_P12: ${{ secrets.CERT_P12 }}
+          CERT_PASSWORD: ${{ secrets.CERT_PASSWORD }}
+
+      - name: Fix libraries
+        run: |
+          export OTOOL=/usr/bin/otool
+          export SOURCEDIR=`brew --prefix`/lib
+          export CONTENTDIR=./output/hrdb.app/Contents
+          export EXECUTABLE="$CONTENTDIR/MacOS/hrdb"
+          export TARGETDIR="$CONTENTDIR/Frameworks"
+
+          mkdir -p ${TARGETDIR}
+
+          echo "Looking for libs that need fixing in executable $EXECUTABLE"
+          ${OTOOL} -l ${EXECUTABLE} \
+            | awk '/dylib/&&!/\usr\/lib/{print $2}' \
+            | sed 's:.*/::' \
+          > /tmp/libs.txt
+
+          echo "The following libs need fixing:"
+          cat /tmp/libs.txt
+          echo "---"
+
+          while read lib; do
+            echo "copying $SOURCEDIR/$lib -> $TARGETDIR/$lib"
+            cp ${SOURCEDIR}/$lib ${TARGETDIR}
+
+            TARGET="$TARGETDIR/$lib"
+            ORIGINAL_ID=`${OTOOL} -DX ${TARGET}`
+            FILENAME=`basename ${TARGET}`
+            NEW_ID="@executable_path/../Frameworks/$FILENAME"
+
+            echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID"
+            install_name_tool -id ${NEW_ID} ${TARGET}
+            install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${EXECUTABLE}
+            echo "signing libs using self signed certificate (for now)"
+            codesign -s "atari.ephidrena.net" --force $TARGET --verbose
+          done < /tmp/libs.txt
+
+          codesign -s "atari.ephidrena.net" --force ${EXECUTABLE} --verbose
+
+      - name: Fix executable permission
+        run: |
+          chmod +x output/hrdb.app/Contents/MacOS/hrdb
+
+      - name: Create tarball to preserve file permissions for artifact
+        run: |
+          cd output
+          tar -cvf hrdb.app.tar hrdb.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: hatari-macos-x64-fixed
+          path: output/hatari.app.tar
