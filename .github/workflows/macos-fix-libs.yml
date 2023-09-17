@@ -175,6 +175,32 @@ jobs:
           codesign -s "atari.ephidrena.net" --force ${TARGETDIR}/$BASENAME --verbose
           codesign -s "atari.ephidrena.net" --force ${TARGETDIR}/QtGui.framework/Versions/5/QtGui --verbose
 
+      - name: Fix QtCore
+        run : |
+          export OTOOL=/usr/bin/otool
+          export SOURCEDIR=`brew --prefix`/lib
+          export CONTENTDIR=./output/hrdb.app/Contents
+          export EXECUTABLE="$CONTENTDIR/MacOS/hrdb"
+          export TARGETDIR="$CONTENTDIR/Frameworks"
+          otool -L ${TARGETDIR}/QtCore.framework/Versions/5/QtCore | awk '/dylib/&&!/\/usr\/lib/{print $1}' > /tmp/qtlibs.txt
+
+          while read lib; do
+            echo "copying $SOURCEDIR/$lib -> $TARGETDIR/$lib"
+            cp ${SOURCEDIR}/$lib ${TARGETDIR}
+
+            TARGET="$TARGETDIR/$lib"
+            ORIGINAL_ID=`${OTOOL} -DX ${TARGET}`
+            FILENAME=`basename ${TARGET}`
+            NEW_ID="@executable_path/../Frameworks/$FILENAME"
+
+            echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID"
+            install_name_tool -id ${NEW_ID} ${TARGET}
+            install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${EXECUTABLE}
+            echo "signing libs using self signed certificate (for now)"
+            codesign -s "atari.ephidrena.net" --force $TARGET --verbose
+          done < /tmp/qtlibs.txt
+
+
       - name: Fix executable permission
         run: |
           chmod +x output/hrdb.app/Contents/MacOS/hrdb
