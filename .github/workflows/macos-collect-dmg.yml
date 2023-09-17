@@ -43,7 +43,7 @@ jobs:
           cp output/hatari.app/Contents/Resources/Hatari.icns ./
           create-dmg \
             --volname "Hatari HRDB Development Build" \
-            --volicon "Hatari.icns"
+            --volicon "Hatari.icns" \
             --icon "hatari.app" 100 120 \
             --hide-extension "hatari.app" \
             --app-drop-link 300 120 \
