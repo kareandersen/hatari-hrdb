@@ -213,7 +213,7 @@ jobs:
           export DYLIB="$CONTENTDIR/Frameworks/libglib-2.0.0.dylib"
           export TARGETDIR="$CONTENTDIR/Frameworks"
           export ORIGINAL_ID=`${OTOOL} -DX ${DYLIB}`
-          ${OTOOL} -L ${DYLIB} | awk '/dylib/&&!/\/usr\/lib/{print $1}' > /tmp/glibs.txt
+          ${OTOOL} -L ${DYLIB} | awk '/dylib/&&/@loader_path/{print $1}' > /tmp/glibs.txt
 
           echo "libglib libs to fix:"
           cat /tmp/glibs.txt
