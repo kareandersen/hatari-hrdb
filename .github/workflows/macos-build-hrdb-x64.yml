@@ -31,13 +31,14 @@ jobs:
         run: |
           cd tools/hrdb
           macdeployqt hrdb.app
-          find ./
-          mv hrdb.app ../../output/
 
       - name: Tar hrdb
         run: |
-          cd output
-          tar -cvf hrdb-macos-x64.tar hrdb.app ../tools/hrdb/docs/hrdb_release_notes.txt
+          cd tools/hrdb
+          find hrdb.app -name "*.dylib" -exec chmod +x {} \;
+          tar -cvf ../../output/hrdb-macos-x64.tar hrdb.app
+          cd docs
+          tar -rf  ../../../output/hrdb-macos-x64.tar hrdb_release_notes.txt
 
       - uses: actions/upload-artifact@v3
         with:
