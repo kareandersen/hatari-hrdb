@@ -156,7 +156,7 @@ jobs:
             codesign -s "atari.ephidrena.net" --force $TARGET --verbose
           done < /tmp/libs.txt
 
-          codesign -s "atari.ephidrena.net" --force ${EXECUTABLE} --verbose
+          codesign -s "atari.ephidrena.net" --deep --force ${EXECUTABLE} --verbose
 
       - name: Fix QtGui libpng
         run: |
