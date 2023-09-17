@@ -224,6 +224,15 @@ jobs:
             TARGET="$TARGETDIR/$FILENAME"
             NEW_ID="@executable_path/../Frameworks/$FILENAME"
 
+            echo "source file"
+            ls -la ${SOURCEDIR}/$FILENAME
+
+            echo "-------"
+
+            echo "target dir"
+            ls -la ${TARGETDIR}
+            echo "-------"
+
             echo "copying $SOURCEDIR/$FILENAME -> $TARGETDIR/$FILENAME"
             cp "$SOURCEDIR/$FILENAME" ${TARGETDIR}/
 
