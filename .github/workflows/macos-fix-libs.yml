@@ -136,6 +136,8 @@ jobs:
             | sed 's:.*/::' \
           > /tmp/libs.txt
 
+          otool -L ${EXECUTABLE} | awk '/dylib/&&!/\/usr\/lib/{print $1}' | sed 's:.*/::' > /tmp/qtlibs.txt
+
           echo "The following libs need fixing:"
           cat /tmp/libs.txt
           echo "---"
@@ -180,9 +182,12 @@ jobs:
           export OTOOL=/usr/bin/otool
           export SOURCEDIR=`brew --prefix`/lib
           export CONTENTDIR=./output/hrdb.app/Contents
-          export EXECUTABLE="$CONTENTDIR/MacOS/hrdb"
           export TARGETDIR="$CONTENTDIR/Frameworks"
-          otool -L ${TARGETDIR}/QtCore.framework/Versions/5/QtCore | awk '/dylib/&&!/\/usr\/lib/{print $1}' | sed 's:.*/::' > /tmp/qtlibs.txt
+          export DYLIB="$TARGETDIR/QtCore.framework/Versions/5/QtCore"
+          ${OTOOL} -L ${DYLIB} | awk '/dylib/&&!/\/usr\/lib/{print $1}' | sed 's:.*/::' > /tmp/qtlibs.txt
+
+          echo "QtCore libs to fix:"
+          cat /tmp/qtlibs.txt
 
           while read lib; do
             echo "copying $SOURCEDIR/$lib -> $TARGETDIR/$lib"
@@ -195,7 +200,7 @@ jobs:
 
             echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID"
             install_name_tool -id ${NEW_ID} ${TARGET}
-            install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${EXECUTABLE}
+            install_name_tool -change ${ORIGINAL_ID} ${NEW_ID} ${DYLIB}
             echo "signing libs using self signed certificate (for now)"
             codesign -s "atari.ephidrena.net" --force $TARGET --verbose
           done < /tmp/qtlibs.txt
