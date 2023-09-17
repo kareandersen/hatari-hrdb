@@ -190,14 +190,14 @@ jobs:
           cat /tmp/qtlibs.txt
 
           while read lib; do
-            echo "copying $SOURCEDIR/$lib -> $TARGETDIR/$lib"
-            cp ${SOURCEDIR}/$lib ${TARGETDIR}
-            BASENAME=`basename ${lib}`
-
-            TARGET="$TARGETDIR/$BASENAME"
             ORIGINAL_ID=${lib}
-            FILENAME=`basename ${TARGET}`
+            FILENAME=`basename ${ORIGINAL_ID}`
+            TARGET="$TARGETDIR/$FILENAME"
             NEW_ID="@executable_path/../Frameworks/$FILENAME"
+
+            echo "copying $SOURCEDIR/$FILENAME -> $TARGETDIR/$FILENAME"
+            cp "$SOURCEDIR/$FILENAME" ${TARGETDIR}/
+
 
             echo "changing id for $TARGET with id $ORIGINAL_ID to $NEW_ID FOR $DYLIB"
             install_name_tool -id ${NEW_ID} ${TARGET}
