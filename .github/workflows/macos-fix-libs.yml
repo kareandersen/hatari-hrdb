@@ -188,4 +188,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: hatari-macos-x64-fixed
-          path: output/hatari.app.tar
+          path: output/hrdb.app.tar
