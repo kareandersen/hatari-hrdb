@@ -12,8 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Create output directory
+      - name: Create directories
         run: |
+          mkdir -p input
           mkdir -p output
 
       - uses: dawidd6/action-download-artifact@v2
@@ -21,11 +22,12 @@ jobs:
           workflow: macos-fix-libs.yml
           workflow_conclusion: success
           name: hatari-macos-x64-fixed
-          path: output/
+          path: input/
 
       - name: Untar files
         run: |
-          tar -xvf output/hatari.app.tar
+          cd output
+          tar -xvf input/hatari.app.tar
 
       - name: List contents (debug)
         run: |
