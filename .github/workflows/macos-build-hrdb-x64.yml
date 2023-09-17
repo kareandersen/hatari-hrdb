@@ -37,7 +37,7 @@ jobs:
       - name: Package hrdb
         run: |
           cd tools/hrdb
-          macdeployqt hrdb.app
+          macdeployqt hrdb.app -verbose=2 -no-plugins
 
       - name: Tar hrdb
         run: |
