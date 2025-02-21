@@ -10,6 +10,7 @@
 #include <QMainWindow>
 #include "../models/memory.h"
 #include "../models/disassembler.h"
+#include "../models/disassembler56.h"
 #include "../models/targetmodel.h"
 
 class QPushButton;
@@ -50,15 +51,6 @@ public:
 protected:
     virtual void closeEvent(QCloseEvent *event) override;
 
-private slots:
-    void startStopClickedSlot();
-    void singleStepClickedSlot();
-    void nextClickedSlot();
-    void skipPressedSlot();
-    void runToClickedSlot();
-    void cycleRunToSlot();
-    void breakPressedSlot();
-
 private:
     enum RunToMode
     {
@@ -66,13 +58,31 @@ private:
         kRunToRte,
         kRunToVbl,
         kRunToHbl,
+        kRunToRam,
         kRunToMax,
     };
+
+private slots:
+    void startStopClickedSlot();
+    void singleStepClickedSlot();
+    void singleStepDspClickedSlot();
+    void nextClickedSlot();
+    void nextDspClickedSlot();
+    void skipPressedSlot();
+    void runToClickedSlot();
+    void cycleRunToSlot();
+    void breakPressedSlot();
+
+private:
     void connectChanged();
+    void configChanged();
     void startStopChanged();
     void memoryChanged(int slot, uint64_t commandId);
     void runningRefreshTimer();
     void flush(const TargetChangedFlags& flags, uint64_t commandId);
+    void protocolMismatch(uint32_t hatariProtocol, uint32_t hrdbProtocol);
+    void saveBinComplete(uint64_t commandId, uint32_t errorCode);
+    void symbolProgramChanged();
 
     // Button callbacks
     void addBreakpointPressed();
@@ -83,6 +93,7 @@ private:
 
     void about();
     void aboutQt();
+    void onlineHelp();
 
     // status
     void messageSet(const QString& msg);
@@ -96,6 +107,7 @@ private:
     void ConnectTriggered();
     void DisconnectTriggered();
     void WarmResetTriggered();
+    void ColdResetTriggered();
     void FastForwardTriggered();
 
     // Exception Menu
@@ -110,6 +122,17 @@ private:
     void loadSettings();
     void saveSettings();
 
+    // Exection
+    void runTo(RunToMode mode);
+
+private slots:
+    void runToRtsSlot() { runTo(RunToMode::kRunToRts); }
+    void runToRteSlot() { runTo(RunToMode::kRunToRte); }
+    void runToVblSlot() { runTo(RunToMode::kRunToVbl); }
+    void runToHblSlot() { runTo(RunToMode::kRunToHbl); }
+    void runToRamSlot() { runTo(RunToMode::kRunToRam); }
+
+private:
     // Our UI widgets
     QWidget*        m_pRunningSquare;
     QPushButton*    m_pStartStopButton;
@@ -117,6 +140,10 @@ private:
     QPushButton*    m_pStepOverButton;
     QPushButton*    m_pRunToButton;
     QComboBox*      m_pRunToCombo;
+
+    QPushButton*    m_pDspStepIntoButton;
+    QPushButton*    m_pDspStepOverButton;
+    QWidget*        m_pDspTopWidget;
 
     RegisterWidget* m_pRegisterWidget;
 
@@ -141,9 +168,13 @@ private:
 
     // Target data -- used for single-stepping
     Disassembler::disassembly   m_disasm;
+    Disassembler56::disassembly m_disasm56;
+
+    // Flush request made before main state is fetched
+    uint64_t                    m_mainStateStartedRequest;
 
     // Flush request made after all main state is fetched
-    uint64_t                    m_mainStateUpdateRequest;
+    uint64_t                    m_mainStateCompleteRequest;
 
     // Flush request made by live update (fetching registers)
     uint64_t                    m_liveRegisterReadRequest;
@@ -166,6 +197,7 @@ private:
     QAction* m_pConnectAct;
     QAction* m_pDisconnectAct;
     QAction* m_pWarmResetAct;
+    QAction* m_pColdResetAct;
     QAction* m_pFastForwardAct;
 
     QAction* m_pExitAct;
@@ -183,6 +215,7 @@ private:
     QAction* m_pHardwareWindowAct;
     QAction* m_pProfileWindowAct;
 
+    QAction* m_pOnlineHelpAct;
     QAction* m_pAboutAct;
     QAction* m_pAboutQtAct;
 };
