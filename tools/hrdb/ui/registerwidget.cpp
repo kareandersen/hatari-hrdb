@@ -15,6 +15,7 @@
 #include "../models/stringformat.h"
 #include "../hardware/tos.h"
 #include "symboltext.h"
+#include "qtversionwrapper.h"
 #include "hopper56/buffer.h"
 
 static QString CreateNumberTooltip(uint32_t value, uint32_t prevValue)
@@ -301,7 +302,7 @@ void RegisterWidget::paintEvent(QPaintEvent * ev)
 
 void RegisterWidget::mouseMoveEvent(QMouseEvent *event)
 {
-    m_mousePos = event->localPos();
+    m_mousePos = QTEVENT_GET_LOCAL_POS(event);
     UpdateTokenUnderMouse();
     QWidget::mouseMoveEvent(event);
     update();
@@ -369,7 +370,7 @@ bool RegisterWidget::event(QEvent *event)
     else if (event->type() == QEvent::Enter)
     {
         QEnterEvent* pEnterEvent = static_cast<QEnterEvent* >(event);
-        m_mousePos = pEnterEvent->localPos();
+        m_mousePos = QTEVENT_GET_LOCAL_POS(pEnterEvent);
         UpdateTokenUnderMouse();
         update();
     }
@@ -687,6 +688,16 @@ void RegisterWidget::PopulateRegisters()
 
             const hop56::instruction& inst = m_disasmDsp.lines[0].inst;
             Disassembler56::print_terse(inst, ref);
+
+            bool branchTaken;
+            if (DisAnalyse56::isBranch(inst, m_currDspRegs, branchTaken))
+            {
+                if (branchTaken)
+                    ref << " [TAKEN]";
+                else
+                    ref << " [NOT TAKEN]";
+            }
+
             AddToken(2, row, disasmText, TokenType::kNone, 0, TokenColour::kCode);
             ++row;
         }
