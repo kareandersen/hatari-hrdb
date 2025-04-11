@@ -1,0 +1,39 @@
+name: Build Hatari for MacOS
+run-name: ${{ github.actor }} / ${{ github.event_name }} / ${{ github.sha }}
+
+on: workflow_dispatch
+
+permissions: read-all
+
+jobs:
+  build:
+    runs-on: macos
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install libs and tools
+        run: |
+          brew update -q
+          brew install -q sdl2 libpng portmidi portaudio readline
+
+      - name: Setup build
+        run: |
+          mkdir -p build
+          cd build
+          cmake ../
+
+      - name: Build
+        run: |
+          cd build
+          make
+
+      - name: Post-build
+        run: |
+          mkdir -p output
+          mv build/src/hatari.app output/hatari.app
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hatari-macos
+          path: output
