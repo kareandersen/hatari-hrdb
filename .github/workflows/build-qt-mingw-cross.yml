@@ -1,0 +1,46 @@
+# Linux Build Test
+
+name: build-linux
+
+# Controls when the workflow will run
+on:
+  # Only manual dispatch for now
+  workflow_dispatch:
+  #push: leaving the CI flow out until we have done some testing
+  #  branches:
+  #  - debugger-extensions
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-20.04
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Sparse checkout - only hrdb for now
+      - uses: actions/checkout@v5
+        with:
+            sparse-checkout: |
+            .github
+            tools/hrdb
+
+      - name: Install cross compilers and libs
+        run: |
+           sudo apt-get update
+           sudo apt-get -y install mingw-w64 qtbase5-dev qt5-qmake qtbase5-dev-tools
+
+      - name: Prep cross build
+          export QMAKE_CC=x86_64-w64-mingw32-gcc
+          export QMAKE_CXX=x86_64-w64-mingw32-g++
+          export QMAKE_LINK=x86_64-w64-mingw32-g++
+          export QMAKE_AR=x86_64-w64-mingw32-ar
+          cd tools/hrdb
+          qmake -spec win32-g++ .
+
+      - name: build hrdb
+        run: |
+          cd tools/hrdb
+          make
+
