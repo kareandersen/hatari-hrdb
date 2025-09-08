@@ -32,6 +32,7 @@ jobs:
            sudo apt-get -y install mingw-w64 qtbase5-dev qt5-qmake qtbase5-dev-tools
 
       - name: Prep cross build
+        run: |
           export QMAKE_CC=x86_64-w64-mingw32-gcc
           export QMAKE_CXX=x86_64-w64-mingw32-g++
           export QMAKE_LINK=x86_64-w64-mingw32-g++
