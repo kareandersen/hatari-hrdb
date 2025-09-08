@@ -1,9 +1,9 @@
 #include <assert.h>
 #include <cstddef>
-#include "decode.h"
 
-#include "instruction.h"
-#include "buffer.h"
+#include "instruction68.h"
+#include "buffer68.h"
+#include "decode68.h"
 
 namespace hop68
 {
@@ -470,7 +470,7 @@ int decode_ea(buffer_reader& buffer, const decode_settings& dsettings, operand& 
 			{
 				// This can be overridden (set to "none") by the following call
 				operand.indirect_index_68020.base_register = calc_index_register(1, reg_bits);
-				
+
 				// extended 68020 modes with full extension word.
 				if (decode_full_extension_word(buffer, dsettings.cpu_type, val16, 0, operand))
 					return 1;
@@ -1819,20 +1819,24 @@ const matcher_entry g_matcher_table_0000[] =
 	MATCH_ENTRY1_IMPL(0,16,0b0000000000111100,		CPU_MIN_68000, ORI,			Inst_imm_ccr ),
 	MATCH_ENTRY1_IMPL(0,16,0b0000000001111100,		CPU_MIN_68000, ORI,			Inst_imm_sr ), // supervisor
 	MATCH_ENTRY1_IMPL(0,16,0b0000001001111100,		CPU_MIN_68000, ANDI,		Inst_imm_sr ), // supervisor
+	MATCH_ENTRY1_IMPL(0,16,0b0000110011111100,		CPU_MIN_68020, CAS2,		Inst_cas2 ),
+	MATCH_ENTRY1_IMPL(0,16,0b0000111011111100,		CPU_MIN_68020, CAS2,		Inst_cas2 ),
 	MATCH_ENTRY1_IMPL(4,12,0b000001101100,			CPU_68020,	   RTM,			Inst_rtm ),
 
-	MATCH_ENTRY2_IMPL(11,5,0b00001,0,9,0b011111100,	CPU_MIN_68020, CAS2,		Inst_cas2 ),
 	MATCH_ENTRY2_IMPL(12,4,0b0000, 3,6,0b100001,	CPU_MIN_68000, MOVEP,		Inst_movep_mem_reg ),
 	MATCH_ENTRY2_IMPL(12,4,0b0000, 3,6,0b101001,	CPU_MIN_68000, MOVEP,		Inst_movep_mem_reg ),
 	MATCH_ENTRY2_IMPL(12,4,0b0000, 3,6,0b110001,	CPU_MIN_68000, MOVEP,		Inst_movep_reg_mem ),
 	MATCH_ENTRY2_IMPL(12,4,0b0000, 3,6,0b111001,	CPU_MIN_68000, MOVEP,		Inst_movep_reg_mem ),
-	MATCH_ENTRY2_IMPL(11,5,0b00001,6,3,0b011,		CPU_MIN_68020, CAS,			Inst_cas ),
 	MATCH_ENTRY1_IMPL(6,10,0b0000011011,			CPU_68020,     CALLM,		Inst_callm ),
 	MATCH_ENTRY2_IMPL(11,5,0b00000,6,3,0b011,		CPU_MIN_68020, CHK2,		Inst_chk2_cmp2 ),	// aliases CALLM
 	MATCH_ENTRY1_IMPL(6,10,0b0000100001,			CPU_MIN_68000, BCHG,		Inst_bchg_imm ),
 	MATCH_ENTRY1_IMPL(6,10,0b0000100010,			CPU_MIN_68000, BCLR,		Inst_bchg_imm ),
 	MATCH_ENTRY1_IMPL(6,10,0b0000100011,			CPU_MIN_68000, BSET,		Inst_bchg_imm ),
 	MATCH_ENTRY1_IMPL(6,10,0b0000100000,			CPU_MIN_68000, BTST,		Inst_btst_imm ),
+	MATCH_ENTRY1_IMPL(6,10,0b0000101011,        	CPU_MIN_68020, CAS,			Inst_cas ),
+	MATCH_ENTRY1_IMPL(6,10,0b0000110011,        	CPU_MIN_68020, CAS,			Inst_cas ),
+	MATCH_ENTRY1_IMPL(6,10,0b0000111011,        	CPU_MIN_68020, CAS,			Inst_cas ),
+
 	MATCH_ENTRY1_IMPL( 8,8,0b00000000,				CPU_MIN_68000, ORI,			Inst_integer_imm_ea ),
 	MATCH_ENTRY1_IMPL( 8,8,0b00000010,				CPU_MIN_68000, ANDI,		Inst_integer_imm_ea ),
 	MATCH_ENTRY1_IMPL( 8,8,0b00000100,				CPU_MIN_68000, SUBI,		Inst_integer_imm_ea ),
@@ -2162,7 +2166,7 @@ void decode(instruction& inst, buffer_reader& buffer, const decode_settings& dse
 		int res = 0;
 		if (pEntry->func)
 			res = pEntry->func(reader_tmp, dsettings, inst, header);
-		
+
 		if (res)
 		{
 			// Handle decode func being partway through and failing

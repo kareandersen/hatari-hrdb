@@ -1,4 +1,4 @@
-#include "instruction.h"
+#include "instruction56.h"
 #include "opcode_strings.i"
 
 namespace hop56
@@ -77,12 +77,14 @@ namespace hop56
 		word_count = 1U;
 		opcode = Opcode::INVALID;
 		neg_operands = 0;
+		address = 0;
 		operands[0].reset();
 		operands[1].reset();
 		operands[2].reset();
 
 		operands2[0].reset();
 		operands2[1].reset();
+		operands2[2].reset();
 
 		pmoves[0].reset();
 	   	pmoves[1].reset();

@@ -143,28 +143,36 @@ static int DebugUI_SetLogFile(int nArgc, char *psArgs[])
 	return DEBUGGER_CMDDONE;
 }
 
+/**
+ * Helper to output given value as binary number
+ */
+void DebugUI_PrintBinary(FILE *fp, int minwidth, uint32_t value)
+{
+	bool one, ones;
+	int bit;
+
+	ones = false;
+	for (bit = 31; bit >= 0; bit--)
+	{
+		one = value & (1U << bit);
+		if (ones || bit < minwidth || one)
+		{
+			fputc(one ? '1':'0', fp);
+			ones = true;
+		}
+	}
+	if (!ones)
+		fputc('0', fp);
+}
 
 /**
  * Helper to print given value in all supported number bases
  */
 static void DebugUI_PrintValue(uint32_t value)
 {
-	bool one, ones;
-	int bit;
-
 	fputs("= %", stderr);
-	ones = false;
-	for (bit = 31; bit >= 0; bit--)
-	{
-		one = value & (1U << bit);
-		if (one || ones)
-		{
-			fputc(one ? '1':'0', stderr);
-			ones = true;
-		}
-	}
-	if (!ones)
-		fputc('0', stderr);
+	DebugUI_PrintBinary(stderr, 0, value);
+
 	if (value & 0x80000000)
 		fprintf(stderr, " (bin), #%u/%d (dec), $%x (hex)\n", value, (int)value, value);
 	else
@@ -523,6 +531,25 @@ static int DebugUI_QuitEmu(int nArgc, char *psArgv[])
 
 
 /**
+ * Command: Force Debug Exception Mask
+ */
+static int DebugUI_RdbExceptionMask(int nArgc, char *psArgv[])
+{
+	const char *errstr;
+
+	if (nArgc != 2)
+		return DebugUI_PrintCmdHelp(psArgv[0]);
+
+	errstr = Log_SetExceptionDebugMask(psArgv[1]);
+	if (!errstr)
+		ExceptionDebugMask = ConfigureParams.Debugger.nExceptionDebugMask;
+	else
+		fprintf(stderr, "Cannot parse exception mask: %s\n", errstr);
+
+	return DEBUGGER_CMDDONE;
+}
+
+/**
  * Print help text for one command
  */
 int DebugUI_PrintCmdHelp(const char *psCmd)
@@ -646,7 +673,7 @@ static int DebugUI_ParseCommand(const char *input_orig)
 	if (cmd == -1)
 	{
 		fprintf(stderr, "Command '%s' not found.\n"
-			"Use 'help' to view a list of available commands.\n",
+			"Use 'help' to view a list of available debugger commands.\n",
 			psArgs[0]);
 		free(input);
 		return DEBUGGER_CMDDONE;
@@ -963,7 +990,8 @@ static const dbgcommand_t uicommand[] =
 	{ DebugUI_Echo, NULL,
 	  "echo", "",
 	  "output given string(s)",
-	  "<strings>\n",
+	  "<string(s)>\n"
+	  "\tUse e.g. 'echo \\ec' to clear screen in a breakpoint.",
 	  false },
 	{ DebugUI_Evaluate, Vars_MatchCpuVariable,
 	  "evaluate", "e",
@@ -1042,7 +1070,7 @@ static const dbgcommand_t uicommand[] =
 	{ DebugUI_Screenshot, NULL,
 	  "screenshot", "",
 	  "save screenshot to given file",
-	  "<filename>\n",
+	  "<path/filename>\n",
 	  false },
 	{ DebugUI_SetOptions, Opt_MatchOption,
 	  "setopt", "o",
@@ -1084,6 +1112,12 @@ static const dbgcommand_t uicommand[] =
 	  "quit emulator",
 	  "[exit value]\n"
 	  "\tLeave debugger and quit emulator with given exit value.",
+	  false },
+	{ DebugUI_RdbExceptionMask, NULL,
+	  "rdb_exc", "",
+	  "set Exception Mask (Remote Debug support)",
+	  "<exception mask string>\n"
+	  "\tSet exceptions which trigger debugger break and force debug support.",
 	  false }
 };
 
@@ -1147,6 +1181,26 @@ void DebugUI_UnInit(void)
 	Symbols_FreeAll();
 	free(debugCommand);
 	debugCommands = 0;
+}
+
+
+/**
+ * Return true if user wants to quit current command
+ */
+bool DebugUI_DoQuitQuery(const char *info)
+{
+	/* if we are running in a Remote Debug context, assume the
+	   user does want to continue. */
+	if (remoteDebugcmdCallback)
+		return false;
+
+	char input[8];
+	fprintf(stderr, "--- q to exit %s, enter to continue --- ", info);
+	if (fgets(input, sizeof(input), stdin) == NULL ||
+	    toupper(input[0]) == 'Q') {
+		return true;
+	}
+	return false;
 }
 
 

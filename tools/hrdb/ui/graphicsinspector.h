@@ -51,6 +51,7 @@ private:
     void overlayGridChanged();
     void overlayZoomChanged();
     void overlayRegistersChanged();
+    void overlayVideoChanged();
 
 private slots:
     // These are genuine slots
@@ -80,7 +81,7 @@ private:
         kFormat2Bitplane = 2,
         kFormat1Bitplane = 3,
         kFormatRegisters = 4,
-        kFormat1BPP = 5,
+        kFormat1BPP = 5,          // this is "byte per pixel"
         kFormatTruColor = 6       // Falcon 16bpp
     };
 
@@ -133,9 +134,6 @@ private:
     int GetEffectiveHeight() const;
     void GetEffectiveData(EffectiveData& data) const;
 
-    // Calc the size of a 16-pixel chunk depending on mode
-    static int32_t BytesPerChunk(Mode mode);
-
     void UpdateAnnotations();
 
     bool CreateAnnotation(NonAntiAliasImage::Annotation &annot, uint32_t address,
@@ -143,6 +141,13 @@ private:
 
     void KeyboardContextMenu();
     void ContextMenu(QPoint pos);
+
+    // Calc how many bytes a "chunk" of pixels constitutes, which is 16 pixels.
+    // This is the step when using the left/right buttons in the UI.
+    static int32_t BytesPerChunk(Mode mode);
+
+    // Convert from a number of screen bytes, to an X pixel position.
+    static int32_t ByteOffsetToPixel(uint32_t x_offset, Mode mode);
 
     QLineEdit*          m_pBitmapAddressLineEdit;
     QLineEdit*          m_pPaletteAddressLineEdit;
@@ -178,6 +183,9 @@ private:
     Regs::RESOLUTION    m_cachedResolution;
     uint16_t            m_cachedFalcResolution; // Copy of SPSHIFT, or 0 for ST
 
+    uint32_t            m_cachedVideoCurr;
+    uint32_t            m_cachedVideoBase;
+
     // Stores state of "memory wanted" vs "memory request in flight"
     struct Request
     {
@@ -209,6 +217,7 @@ private:
 
     // Options
     bool                            m_annotateRegisters;
+    bool                            m_annotateVideo;
 
     // Context menu actions
     QAction*                        m_pSaveImageAction;
@@ -217,6 +226,7 @@ private:
     QAction*                        m_pOverlayGridAction;
     QAction*                        m_pOverlayZoomAction;
     QAction*                        m_pOverlayRegistersAction;
+    QAction*                        m_pOverlayVideoAction;
 
     // "Show memory for $x" top-level menus:
     // [0] Show Base Address

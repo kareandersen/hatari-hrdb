@@ -4,8 +4,8 @@
 #include <QVector>
 #include <QTextStream>
 
-#include "hopper/instruction.h"
-#include "hopper/decode.h"
+#include "hopper68/instruction68.h"
+#include "hopper68/decode68.h"
 
 class SymbolTable;
 class Registers;
@@ -19,6 +19,11 @@ class Disassembler
 public:
     struct line
     {
+        line() :
+            address(0)
+        {
+            memset(mem, 0, sizeof(mem));
+        }
         uint32_t                address;
         hop68::instruction      inst;
         uint8_t                 mem[32];            // Copy of instruction memory
@@ -70,6 +75,9 @@ public:
 
     // See if this is a branch instruction and where it points (i.e. its effective address)
     static bool getBranchTarget(uint32_t instAddr, const hop68::instruction &inst, uint32_t& target);
+
+    // Set a bitmask of all the registers used by the instruction.
+    static uint64_t getRegisterUsage(const hop68::instruction& inst);
 };
 
 #endif // DISASSEMBLER_H

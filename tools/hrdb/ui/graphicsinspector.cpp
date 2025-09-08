@@ -93,7 +93,10 @@ GraphicsInspectorWidget::GraphicsInspectorWidget(QWidget *parent,
     m_userHeight(200),
     m_paletteMode(kRegisters),
     m_cachedResolution(Regs::RESOLUTION::LOW),
-    m_annotateRegisters(false)
+    m_cachedVideoCurr(0U),
+    m_cachedVideoBase(0U),
+    m_annotateRegisters(false),
+    m_annotateVideo(false)
 {
     m_paletteAddress = Regs::VID_PAL_0;
 
@@ -133,7 +136,7 @@ GraphicsInspectorWidget::GraphicsInspectorWidget(QWidget *parent,
     m_pModeComboBox->addItem(tr("3 Plane"), Mode::kFormat3Bitplane);
     m_pModeComboBox->addItem(tr("2 Plane"), Mode::kFormat2Bitplane);
     m_pModeComboBox->addItem(tr("1 Plane"), Mode::kFormat1Bitplane);
-    m_pModeComboBox->addItem(tr("1 BPP"), Mode::kFormat1BPP);
+    m_pModeComboBox->addItem(tr("1 Byte/Px"), Mode::kFormat1BPP);
     m_pModeComboBox->addItem(tr("TruCol"), Mode::kFormatTruColor);
 
     m_pLeftStrideButton->setArrowType(Qt::ArrowType::LeftArrow);
@@ -234,13 +237,16 @@ GraphicsInspectorWidget::GraphicsInspectorWidget(QWidget *parent,
     m_pOverlayGridAction->setCheckable(true);
     m_pOverlayZoomAction = new QAction("Zoom", this);
     m_pOverlayZoomAction->setCheckable(true);
-    m_pOverlayRegistersAction = new QAction("Address Registers", this);
+    m_pOverlayRegistersAction = new QAction("Registers", this);
     m_pOverlayRegistersAction->setCheckable(true);
+    m_pOverlayVideoAction = new QAction("Video Addresses", this);
+    m_pOverlayVideoAction->setCheckable(true);
 
     m_pOverlayMenu->addAction(m_pOverlayDarkenAction);
     m_pOverlayMenu->addAction(m_pOverlayGridAction);
     m_pOverlayMenu->addAction(m_pOverlayZoomAction);
     m_pOverlayMenu->addAction(m_pOverlayRegistersAction);
+    m_pOverlayMenu->addAction(m_pOverlayVideoAction);
 
     // Keyboard shortcuts
     new QShortcut(QKeySequence("Ctrl+G"),         this, SLOT(gotoClickedSlot()), nullptr, Qt::WidgetWithChildrenShortcut);
@@ -275,6 +281,7 @@ GraphicsInspectorWidget::GraphicsInspectorWidget(QWidget *parent,
     connect(m_pOverlayGridAction,           &QAction::triggered,          this, &GraphicsInspectorWidget::overlayGridChanged);
     connect(m_pOverlayZoomAction,           &QAction::triggered,          this, &GraphicsInspectorWidget::overlayZoomChanged);
     connect(m_pOverlayRegistersAction,      &QAction::triggered,          this, &GraphicsInspectorWidget::overlayRegistersChanged);
+    connect(m_pOverlayVideoAction,          &QAction::triggered,          this, &GraphicsInspectorWidget::overlayVideoChanged);
 
     loadSettings();
     UpdateUIElements();
@@ -316,6 +323,8 @@ void GraphicsInspectorWidget::loadSettings()
     m_pImageWidget->SetGrid(grid);
     m_pImageWidget->SetZoom(zoom);
     m_annotateRegisters = settings.value("annotateRegisters", QVariant(false)).toBool();
+    m_annotateVideo = settings.value("annotateVideo", QVariant(false)).toBool();
+    m_paletteAddress = settings.value("paletteAddress", QVariant(Regs::VID_PAL_0)).toUInt();
 
     UpdateUIElements();
     settings.endGroup();
@@ -337,6 +346,8 @@ void GraphicsInspectorWidget::saveSettings()
     settings.setValue("grid", m_pImageWidget->GetGrid());
     settings.setValue("zoom", m_pImageWidget->GetZoom());
     settings.setValue("annotateRegisters", m_annotateRegisters);
+    settings.setValue("annotateVideo", m_annotateVideo);
+    settings.setValue("paletteAddress", m_paletteAddress);
     settings.endGroup();
 }
 
@@ -458,6 +469,12 @@ void GraphicsInspectorWidget::memoryChanged(int /*memorySlot*/, uint64_t command
             if (m_pTargetModel->GetMachineType() == MACHINE_FALCON &&
                     pMem->ReadCpuMulti(Regs::FALC_SPSHIFT, 2U, falcVal))
                 m_cachedFalcResolution = static_cast<uint16_t>(falcVal);
+
+            m_cachedVideoCurr = 0;
+            HardwareST::GetVideoCurrent(*pMem, m_cachedVideoCurr);
+
+            m_cachedVideoBase = 0;
+            HardwareST::GetVideoBase(*pMem, m_pTargetModel->GetMachineType(), m_cachedVideoBase);
         }
 
         // See if bitmap etc can now be requested
@@ -544,6 +561,12 @@ void GraphicsInspectorWidget::overlayZoomChanged()
 void GraphicsInspectorWidget::overlayRegistersChanged()
 {
     m_annotateRegisters = m_pOverlayRegistersAction->isChecked();
+    UpdateAnnotations();
+}
+
+void GraphicsInspectorWidget::overlayVideoChanged()
+{
+    m_annotateVideo = m_pOverlayVideoAction->isChecked();
     UpdateAnnotations();
 }
 
@@ -686,20 +709,33 @@ void GraphicsInspectorWidget::updateInfoLine()
     if (info.isValid)
     {
         // We can calculate the memory address here
-        uint32_t addr = ~0U;
-        switch(m_mode)
+        uint32_t addr = m_bitmapAddress + info.y * data.bytesPerLine;
+        // Use the effective mode, since m_mode might be "Registers"
+        switch(data.mode)
         {
         case Mode::kFormat1Bitplane:
+            addr += (info.x / 16) * 2;
+            break;
         case Mode::kFormat2Bitplane:
+            addr += (info.x / 16) * 4;
+            break;
         case Mode::kFormat3Bitplane:
+            addr += (info.x / 16) * 6;
+            break;
         case Mode::kFormat4Bitplane:
+            addr += (info.x / 16) * 8;
+             break;
         case Mode::kFormat8Bitplane:
-            addr = m_bitmapAddress + info.y * data.bytesPerLine + (info.x / 16) * BytesPerChunk(m_mode);
+            addr += (info.x / 16) * 16;
             break;
         case Mode::kFormat1BPP:
-            addr = m_bitmapAddress + info.y * data.bytesPerLine + info.x;
+            addr += info.x;
+            break;
+        case Mode::kFormatTruColor:
+            addr += info.x * 2;
             break;
         default:
+            assert(0);
             break;
         }
 
@@ -763,15 +799,24 @@ void GraphicsInspectorWidget::UpdateMemoryRequests()
         if (m_requestPalette.requestId == 0)
         {
             if (m_paletteMode == kRegisters)
+            {
                 m_requestPalette.requestId = m_pDispatcher->ReadMemory(MemorySlot::kGraphicsInspectorPalette, Regs::VID_PAL_0, 0x20);
+                return;
+            }
             else if (m_paletteMode == kUserMemory)
+            {
                 m_requestPalette.requestId = m_pDispatcher->ReadMemory(MemorySlot::kGraphicsInspectorPalette, m_paletteAddress, 0x20);
+                return;
+            }
             else if (m_paletteMode == kUserMemoryF030)
+            {
                 m_requestPalette.requestId = m_pDispatcher->ReadMemory(MemorySlot::kGraphicsInspectorPalette, m_paletteAddress, 256 * 4);
-            else
-                m_requestPalette.Clear();   // we don't need to fetch
+                return;
+            }
         }
-        return; // block the next requests
+        // All other modes do not need to fetch palette data,
+        // so fall through to handle bitmap fetch.
+        m_requestPalette.Clear();
     }
 
     // We only get here if the other flags are clean
@@ -997,6 +1042,7 @@ void GraphicsInspectorWidget::UpdateUIElements()
     m_pOverlayGridAction->setChecked(m_pImageWidget->GetGrid());
     m_pOverlayZoomAction->setChecked(m_pImageWidget->GetZoom());
     m_pOverlayRegistersAction->setChecked(m_annotateRegisters);
+    m_pOverlayVideoAction->setChecked(m_annotateVideo);
     DisplayAddress();
 
     EffectiveData data;
@@ -1102,35 +1148,7 @@ void GraphicsInspectorWidget::GetEffectiveData(GraphicsInspectorWidget::Effectiv
     data.requiredSize = data.bytesPerLine * data.height;
 
     // Calculate pixel size
-    data.pixels = 0;
-    switch (data.mode)
-    {
-    case kFormat1BPP:
-        data.pixels = data.bytesPerLine;
-        break;
-    case kFormatTruColor:
-        data.pixels = data.bytesPerLine / 2;
-        break;
-    default:
-        data.pixels = data.bytesPerLine / BytesPerChunk(data.mode) * 16;
-        break;
-    }
-}
-
-int32_t GraphicsInspectorWidget::BytesPerChunk(GraphicsInspectorWidget::Mode mode)
-{
-    switch (mode)
-    {
-    case kFormat8Bitplane: return 16;
-    case kFormat4Bitplane: return 8;
-    case kFormat3Bitplane: return 6;
-    case kFormat2Bitplane: return 4;
-    case kFormat1Bitplane: return 2;
-    case kFormat1BPP: assert(0);
-    default:               break;
-    }
-    assert(0);
-    return 0;
+    data.pixels = ByteOffsetToPixel(data.bytesPerLine, data.mode);
 }
 
 void GraphicsInspectorWidget::UpdateAnnotations()
@@ -1150,6 +1168,21 @@ void GraphicsInspectorWidget::UpdateAnnotations()
 
             uint32_t dregAddr = m_pTargetModel->GetRegs().GetDReg(i);
             if (CreateAnnotation(annot, dregAddr, data, Registers::s_names[Registers::D0 + i]))
+                annots.append(annot);
+        }
+    }
+
+    if (m_annotateVideo)
+    {
+        NonAntiAliasImage::Annotation annot;
+        if (m_cachedVideoCurr)
+        {
+            if (CreateAnnotation(annot, m_cachedVideoCurr, data, "VID_CURR"))
+                annots.append(annot);
+        }
+        if (m_cachedVideoBase)
+        {
+            if (CreateAnnotation(annot, m_cachedVideoBase, data, "VID_BASE"))
                 annots.append(annot);
         }
     }
@@ -1180,17 +1213,9 @@ bool GraphicsInspectorWidget::CreateAnnotation(NonAntiAliasImage::Annotation &an
 
     uint32_t offset = address - m_bitmapAddress;
     uint32_t y = offset / data.bytesPerLine;
-    uint32_t x_offset = offset - (y * data.bytesPerLine);
+    uint32_t x_offset = offset - (y * data.bytesPerLine);   // this is a number of bytes
 
-    if (data.mode == kFormat1BPP)
-    {
-        annot.x = x_offset;
-    }
-    else
-    {
-        uint32_t chunk = x_offset / BytesPerChunk(data.mode);
-        annot.x = chunk * 16;
-    }
+    annot.x = ByteOffsetToPixel(x_offset, data.mode);
     annot.y = y;
     annot.text = label;
     return true;
@@ -1230,5 +1255,41 @@ void GraphicsInspectorWidget::ContextMenu(QPoint pos)
     }
 
     menu.exec(pos);
+}
+
+int32_t GraphicsInspectorWidget::BytesPerChunk(GraphicsInspectorWidget::Mode realMode)
+{
+    // Note "kFormatRegisters" is not supported
+    switch (realMode)
+    {
+        case kFormat1BPP:      return 1*16;
+        case kFormatTruColor:  return 2*16;
+        case kFormat1Bitplane: return 2;
+        case kFormat2Bitplane: return 4;
+        case kFormat3Bitplane: return 6;
+        case kFormat4Bitplane: return 8;
+        case kFormat8Bitplane: return 16;
+        default:               break;
+    }
+    assert(0);
+    return 0;
+}
+
+int32_t GraphicsInspectorWidget::ByteOffsetToPixel(uint32_t x_offset, GraphicsInspectorWidget::Mode realMode)
+{
+    // Note "kFormatRegisters" is not supported
+    switch (realMode)
+    {
+        case kFormat1BPP:       return x_offset;
+        case kFormatTruColor:   return x_offset / 2;
+        case kFormat1Bitplane:  return (x_offset / 2) * 16;
+        case kFormat2Bitplane:  return (x_offset / 4) * 16;
+        case kFormat3Bitplane:  return (x_offset / 6) * 16;
+        case kFormat4Bitplane:  return (x_offset / 8) * 16;
+        case kFormat8Bitplane:  return (x_offset / 16) * 16;
+        default:                break;
+    }
+    assert(0);
+    return 0;
 }
 

@@ -55,14 +55,18 @@ public:
 class HardwareTreeView : public QTreeView
 {
 public:
-    HardwareTreeView(QWidget* parent, Session* pSession);
+    HardwareTreeView(QWidget* parent, Session* pSession, HardwareTreeModel* pModel);
 
 protected:
     virtual void contextMenuEvent(QContextMenuEvent *event) override;
+    void copyToClipboard();
 
     Session*            m_pSession;
+    HardwareTreeModel*  m_pModel;
+
     // Menu actions
     ShowAddressMenu     m_showAddressMenu;
+    QAction*            m_pCopyAction;
 };
 
 class HardwareWindow : public QDockWidget
@@ -79,18 +83,22 @@ public:
     void saveSettings();
 
 private:
-    void copyToClipboard();
     void connectChanged();
     void startStopChanged();
     void flush(const TargetChangedFlags& flags, uint64_t commandId);
     void memoryChanged(int memorySlot, uint64_t commandId);
     void settingsChanged();
 
-    void addField(HardwareBase* pLayout, const QString& title, const stgen::FieldDef& def);
-    void addRegBinary16(HardwareBase* pLayout, const QString& title, uint32_t addr);
-    void addRegSigned16(HardwareBase* pLayout, const QString& title, uint32_t addr);
-    void addMultiField(HardwareBase *pLayout, const QString &title, const stgen::FieldDef** defs);
-    void addShared(HardwareBase *pLayout, const QString &title, HardwareField* pField);
+    HardwareField* addField(HardwareBase* pLayout, const QString& title, const stgen::FieldDef& def);
+    HardwareField* addRegBinary16(HardwareBase* pLayout, const QString& title, uint32_t addr);
+    HardwareField* addRegSigned16(HardwareBase* pLayout, const QString& title, uint32_t addr);
+    HardwareField* addMultiField(HardwareBase *pLayout, const QString &title, const stgen::FieldDef** defs);
+    HardwareField* addShared(HardwareBase *pLayout, const QString &title, HardwareField* pField);
+
+    // Get the titles of expanded tree rows
+    void getExpanded(const QModelIndex & index, int depth, QList<QString>& titles) const;
+    // Expand only the rows specified by the titles.
+    void setExpanded(const QModelIndex & index, int depth, const QList<QString>& titles);
 
     Session*                    m_pSession;
     TargetModel*                m_pTargetModel;

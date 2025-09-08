@@ -2,9 +2,64 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QVBoxLayout>
+#include <QGroupBox>
+#include <QGridLayout>
 
 #include "../models/targetmodel.h"
 #include "../transport/dispatcher.h"
+
+ExceptionsGroupBox::ExceptionsGroupBox(QString title, QWidget* parent) :
+    QGroupBox(title, parent)
+{
+    // Options grid box
+    // Col    Mean
+    //  0     stretch
+    //  1     exceptions pt 1
+    //  2     exceptions pt 2
+    //  3     "all"/"non"
+    //  4     stretch
+
+    QGridLayout *pGridLayout = new QGridLayout;
+    uint32_t half = (ExceptionMask::kExceptionCount + 1) / 2;
+    for (uint32_t i = 0; i < ExceptionMask::kExceptionCount; ++i)
+    {
+        m_pCheckboxes[i] = new QCheckBox(ExceptionMask::GetName(ExceptionMask::Type(i)), this);
+        pGridLayout->addWidget(m_pCheckboxes[i], i % half, 1 + i / half);
+    }
+
+    m_pSelectAllButton = new QPushButton("All", this);
+    m_pSelectNoneButton = new QPushButton("None", this);
+    pGridLayout->addWidget(m_pSelectAllButton, 0, 3);
+    pGridLayout->addWidget(m_pSelectNoneButton, 1, 3);
+    pGridLayout->setColumnStretch(0, 100);
+    pGridLayout->setColumnStretch(4, 100);
+    setLayout(pGridLayout);
+
+    connect(m_pSelectAllButton, &QPushButton::clicked, this, &ExceptionsGroupBox::selectAllClicked);
+    connect(m_pSelectNoneButton, &QPushButton::clicked, this, &ExceptionsGroupBox::selectNoneClicked);
+}
+
+void ExceptionsGroupBox::Set(ExceptionMask::Type type, bool enabled)
+{
+    m_pCheckboxes[type]->setChecked(enabled);
+}
+
+bool ExceptionsGroupBox::Get(ExceptionMask::Type type) const
+{
+    return m_pCheckboxes[type]->isChecked();
+}
+
+void ExceptionsGroupBox::selectAllClicked()
+{
+    for (uint32_t i = 0; i < ExceptionMask::kExceptionCount; ++i)
+        m_pCheckboxes[i]->setChecked(true);
+}
+
+void ExceptionsGroupBox::selectNoneClicked()
+{
+    for (uint32_t i = 0; i < ExceptionMask::kExceptionCount; ++i)
+        m_pCheckboxes[i]->setChecked(false);
+}
 
 ExceptionDialog::ExceptionDialog(QWidget *parent, TargetModel* pTargetModel, Dispatcher* pDispatcher) :
     QDialog(parent),
@@ -17,25 +72,23 @@ ExceptionDialog::ExceptionDialog(QWidget *parent, TargetModel* pTargetModel, Dis
     pOkButton->setDefault(true);
     QPushButton* pCancelButton = new QPushButton("&Cancel", this);
 
+
     QHBoxLayout* pHLayout = new QHBoxLayout(this);
     pHLayout->addWidget(pOkButton);
     pHLayout->addWidget(pCancelButton);
     QWidget* pButtonContainer = new QWidget(this);
     pButtonContainer->setLayout(pHLayout);
 
-    QVBoxLayout* pLayout = new QVBoxLayout(this);
-    for (int i = 0; i < ExceptionMask::kExceptionCount; ++i)
-    {
-        m_pCheckboxes[i] = new QCheckBox(ExceptionMask::GetName(i + 2), this);
-        pLayout->addWidget(m_pCheckboxes[i]);
-    }
-    pLayout->addWidget(pButtonContainer);
+    m_pGroupBox = new ExceptionsGroupBox("Exception Types", this);
+
+    QVBoxLayout* pWholeLayout = new QVBoxLayout(this);
+    pWholeLayout->addWidget(m_pGroupBox);
+    pWholeLayout->addWidget(pButtonContainer);
 
     connect(pOkButton, &QPushButton::clicked, this, &ExceptionDialog::okClicked);
-
     connect(pOkButton, &QPushButton::clicked, this, &ExceptionDialog::accept);
     connect(pCancelButton, &QPushButton::clicked, this, &ExceptionDialog::reject);
-    this->setLayout(pLayout);
+    this->setLayout(pWholeLayout);
 }
 
 ExceptionDialog::~ExceptionDialog()
@@ -46,14 +99,11 @@ ExceptionDialog::~ExceptionDialog()
 void ExceptionDialog::showEvent(QShowEvent *event)
 {
     const ExceptionMask& mask = m_pTargetModel->GetExceptionMask();
-    m_pCheckboxes[0]->setChecked(mask.Get(ExceptionMask::kBus));
-    m_pCheckboxes[1]->setChecked(mask.Get(ExceptionMask::kAddress));
-    m_pCheckboxes[2]->setChecked(mask.Get(ExceptionMask::kIllegal));
-    m_pCheckboxes[3]->setChecked(mask.Get(ExceptionMask::kZeroDiv));
-    m_pCheckboxes[4]->setChecked(mask.Get(ExceptionMask::kChk));
-    m_pCheckboxes[5]->setChecked(mask.Get(ExceptionMask::kTrapv));
-    m_pCheckboxes[6]->setChecked(mask.Get(ExceptionMask::kPrivilege));
-    m_pCheckboxes[7]->setChecked(mask.Get(ExceptionMask::kTrace));
+    for (uint32_t i = 0; i < ExceptionMask::kExceptionCount; ++i)
+    {
+        ExceptionMask::Type t = (ExceptionMask::Type)i;
+        m_pGroupBox->Set(t, mask.Get(t));
+    }
 
     QDialog::showEvent(event);
 }
@@ -61,19 +111,16 @@ void ExceptionDialog::showEvent(QShowEvent *event)
 void ExceptionDialog::okClicked()
 {
     ExceptionMask mask;
-    mask.m_mask = 0;
-
-    if (m_pCheckboxes[0]->isChecked()) mask.Set(ExceptionMask::kBus);
-    if (m_pCheckboxes[1]->isChecked()) mask.Set(ExceptionMask::kAddress);
-    if (m_pCheckboxes[2]->isChecked()) mask.Set(ExceptionMask::kIllegal);
-    if (m_pCheckboxes[3]->isChecked()) mask.Set(ExceptionMask::kZeroDiv);
-    if (m_pCheckboxes[4]->isChecked()) mask.Set(ExceptionMask::kChk);
-    if (m_pCheckboxes[5]->isChecked()) mask.Set(ExceptionMask::kTrapv);
-    if (m_pCheckboxes[6]->isChecked()) mask.Set(ExceptionMask::kPrivilege);
-    if (m_pCheckboxes[7]->isChecked()) mask.Set(ExceptionMask::kTrace);
+    for (uint32_t i = 0; i < ExceptionMask::kExceptionCount; ++i)
+    {
+        ExceptionMask::Type t = (ExceptionMask::Type)i;
+        mask.Set(t, m_pGroupBox->Get(t));
+    }
 
     // Send to target
     // NOTE: sending this returns a response with the set exmask,
     // so update in the target model is automatic.
-    m_pDispatcher->SetExceptionMask(mask.m_mask);
+    m_pDispatcher->SetExceptionMask(mask.GetAsHatari());
 }
+
+
