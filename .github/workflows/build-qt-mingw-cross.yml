@@ -1,6 +1,6 @@
 # Linux Build Test
 
-name: build-linux
+name: build-mingw64-cross
 
 # Controls when the workflow will run
 on:
