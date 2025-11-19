@@ -478,8 +478,7 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 	}
 	else
 	{
-		sdlWindow = SDL_CreateWindow("Hatari", SDL_WINDOWPOS_UNDEFINED,
-		                             SDL_WINDOWPOS_UNDEFINED,
+		sdlWindow = SDL_CreateWindow("Hatari", 0, 0,
 		                             win_width, win_height, sdlVideoFlags);
 		if (!sdlWindow)
 		{

@@ -1,3 +1,4 @@
+#include <QDebug>
 #include "symboltable.h"
 #include <assert.h>
 #include <algorithm>
@@ -324,6 +325,7 @@ void SymbolSubTable::AddSymbol(std::string name, uint32_t address, uint32_t size
 
 void SymbolSubTable::CreateCache()
 {
+    qInfo("Creating cache");
     // Sort the symbols in name order
     std::sort(m_symbols.begin(), m_symbols.end(), SymbolNameCompare());
 
@@ -442,6 +444,7 @@ void SymbolTable::InitHardware(MemSpace space)
 
 void SymbolTable::ResetHatari()
 {
+    qInfo("Resetting Hatari symbol table cache");
     m_subTables[kHatari].Clear();
 }
 

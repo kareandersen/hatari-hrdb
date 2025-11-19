@@ -1,15 +1,16 @@
 #include "../transport/dispatcher.h"
 #include <QtWidgets>
 #include <QtNetwork>
+#include <QDebug>
 
 #include <iostream>
+
 
 #include "../models/targetmodel.h"
 #include "../models/stringsplitter.h"
 #include "../models/stringparsers.h"
 #include "../models/profiledata.h"
 #include "../models/history.h"
-
 //#define DISPATCHER_DEBUG
 
 // Protocol ID which needs to match the Hatari target
@@ -121,6 +122,7 @@ uint64_t Dispatcher::ReadExceptionMask()
 
 uint64_t Dispatcher::ReadSymbols()
 {
+    qInfo("ReadSymbols called()");
     return SendCommandPacket("symlist");
 }
 
@@ -432,7 +434,7 @@ uint64_t Dispatcher::SendCommandShared(MemorySlot slot, std::string command)
     m_sentCommands.push_front(pNewCmd);
     m_pTcpSocket->write(command.c_str(), command.size() + 1);
 #ifdef DISPATCHER_DEBUG
-    std::cout << "COMMAND:" << pNewCmd->m_cmd << std::endl;
+    qInfo() << "COMMAND:" << pNewCmd->m_cmd << std::endl;
 #endif
     return pNewCmd->m_uid;
 }

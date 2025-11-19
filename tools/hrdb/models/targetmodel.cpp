@@ -1,6 +1,7 @@
 #include "targetmodel.h"
 #include <iostream>
 #include <QTimer>
+#include <QDebug>
 
 #include "profiledata.h"
 
@@ -169,6 +170,8 @@ void TargetModel::SetBreakpoints(const Breakpoints& bps, uint64_t commandId)
 
 void TargetModel::SetSymbolTable(const SymbolSubTable& syms, uint64_t commandId)
 {
+    qInfo("Symbol table updated");
+    m_symbolTables.m_tables[MEM_CPU].ResetHatari();
     m_symbolTables.m_tables[MEM_CPU].SetHatariSubTable(syms);
     m_changedFlags.SetChanged(TargetChangedFlags::kSymbolTable);
     emit symbolTableChangedSignal(commandId);
@@ -189,12 +192,15 @@ void TargetModel::SetYm(const YmState& state)
 
 void TargetModel::NotifyMemoryChanged(uint32_t address, uint32_t size)
 {
+    qInfo("Memory change notification received");
     m_changedFlags.SetChanged(TargetChangedFlags::kOtherMemory);
     emit otherMemoryChangedSignal(address, size);
 }
 
 void TargetModel::NotifySymbolProgramChanged()
 {
+
+    qDebug("Symbol change notification received");
     // When symbol table is updated
     emit symbolProgramChangedSignal();
 }
@@ -255,8 +261,22 @@ uint32_t TargetModel::GetStartStopPC(Processor proc) const
         return m_startStopDspPc;
 }
 
+static QString memSpaceToString(MemSpace space)
+{
+    switch (space) {
+        case MEM_CPU: return QStringLiteral("CPU");
+        case MEM_P:   return QStringLiteral("P:");
+        case MEM_X:   return QStringLiteral("X:");
+        case MEM_Y:   return QStringLiteral("Y:");
+        case MEM_L:   return QStringLiteral("L:");
+        default:      return QStringLiteral("UNKNOWN");
+    }
+}
+
 const SymbolTable& TargetModel::GetSymbolTable(MemSpace space) const
 {
+    QString memSpaceName = memSpaceToString(space);
+    qInfo() << "GetSymbolTable for " << memSpaceName;
     assert(space <= MEM_SPACE_MAX);
     return m_symbolTables.m_tables[space];
 }

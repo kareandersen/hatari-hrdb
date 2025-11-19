@@ -2,7 +2,9 @@
 #include <QString>
 #include <QFileSystemWatcher>
 #include <QObject>
+#include <QDebug>
 #include "transport/dispatcher.h"
+#include "models/launcher.h"
 #include "models/targetmodel.h"
 #include "session.h"
 
@@ -35,8 +37,13 @@ void FileWatcher::addPath(const QString &file)
         m_pFileSystemWatcher->addPath(file);
 }
 
-void FileWatcher::handleFileChanged(QString /*path*/)
+void FileWatcher::handleFileChanged(QString path)
 {
+    qInfo() << "File changed: " << path;
     //@FIXME:nope.
-    ((Session*)m_pSession)->resetWarm();
+    //
+    auto session = (Session*)m_pSession;
+    //((Session*)m_pSession)->resetWarm();
+    session->m_pHatariProcess->terminate();
+    LaunchHatari(session->GetLaunchSettings(), session);
 }
