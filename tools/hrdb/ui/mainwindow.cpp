@@ -871,10 +871,12 @@ void MainWindow::createActions()
 
     m_pWarmResetAct = new QAction(tr("Warm Reset"), this);
     m_pWarmResetAct->setStatusTip(tr("Warm-Reset the machine"));
+    m_pWarmResetAct->setShortcut(QKeySequence(Qt::META + Qt::Key_R));
     connect(m_pWarmResetAct, &QAction::triggered, this, &MainWindow::WarmResetTriggered);
 
     m_pColdResetAct = new QAction(tr("Cold Reset"), this);
     m_pColdResetAct->setStatusTip(tr("Cold-Reset the machine"));
+    m_pColdResetAct->setShortcut(QKeySequence(Qt::META + Qt::Key_C));
     connect(m_pColdResetAct, &QAction::triggered, this, &MainWindow::ColdResetTriggered);
 
     m_pFastForwardAct = new QAction(tr("Fast-Forward"), this);
