@@ -11,6 +11,7 @@ QMAKE_TARGET_BUNDLE_PREFIX = org.avena
 QMAKE_TARGET_COMPANY = Avena
 QMAKE_TARGET_PRODUCT = hrdb
 QMAKE_TARGET_DESCRIPTION = Hatari Remote DeBugger UI
+QMAKE_PKGINFO_TYPEINFO = HRDB
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
