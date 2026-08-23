@@ -1054,6 +1054,7 @@ int Symbols_Command(int nArgc, char *psArgs[])
 {
 	enum { TYPE_CPU, TYPE_DSP } listtype;
 	uint32_t offsets[3], maxaddr;
+	bool for_program = false;
 	symbol_list_t *list;
 	const char *file;
 	int i;
@@ -1148,13 +1149,17 @@ int Symbols_Command(int nArgc, char *psArgs[])
 			fprintf(stderr, "ERROR: no program loaded (through GEMDOS HD emu)!\n");
 			return DEBUGGER_CMDDONE;
 		}
+		/* these are the current program's symbols, so they can be
+		 * freed like autoloaded ones when it exits or machine resets
+		 */
+		for_program = true;
 	}
 
 	/* do actual loading */
 	list = Symbols_Load(file, offsets, maxaddr, SYMTYPE_ALL);
 	if (list) {
 		if (listtype == TYPE_CPU) {
-			Symbols_UpdateCpu(list, SYMBOLS_FOR_USER);
+			Symbols_UpdateCpu(list, for_program ? SYMBOLS_FOR_PROGRAM : SYMBOLS_FOR_USER);
 		} else {
 			Symbols_UpdateDsp(list);
 		}
