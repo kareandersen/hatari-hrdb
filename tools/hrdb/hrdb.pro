@@ -5,6 +5,13 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 CONFIG += c++11
 CONFIG -= embed_manifest_exe
 
+# Application identity. Without a bundle prefix, qmake stamps the macOS
+# bundle with its "com.yourcompany" placeholder identifier.
+QMAKE_TARGET_BUNDLE_PREFIX = org.avena
+QMAKE_TARGET_COMPANY = Avena
+QMAKE_TARGET_PRODUCT = hrdb
+QMAKE_TARGET_DESCRIPTION = Hatari Remote DeBugger UI
+
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
 # depend on your compiler). Please consult the documentation of the
