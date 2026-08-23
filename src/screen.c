@@ -116,6 +116,7 @@ SDL_Window *sdlWindow;
 static SDL_Renderer *sdlRenderer;
 static SDL_Texture *sdlTexture;
 static bool bUseSdlRenderer;            /* true when using SDL2 renderer */
+static bool bPrevUseVsync = false;      /* vsync setting given to SDL */
 static bool bIsSoftwareRenderer;
 
 void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
@@ -380,6 +381,88 @@ void Screen_SetTextureScale(int width, int height, int win_width, int win_height
 
 
 /**
+ * Whether the SDL renderer should wait for the host vertical refresh.
+ *
+ * Fast forwarding can be set to override the configured value, as vsync
+ * puts a hard limit on how fast frames can be shown.
+ */
+static bool Screen_UseVsync(void)
+{
+	if (ConfigureParams.Screen.bFastForwardBoost
+	    && ConfigureParams.System.bFastForward)
+		return false;
+	return ConfigureParams.Screen.bUseVsync;
+}
+
+/**
+ * Tell SDL which vsync setting to use for the renderers it creates.
+ */
+static void Screen_SetVsyncHint(void)
+{
+	bool bVsync = Screen_UseVsync();
+	char hint[2];
+
+	if (bPrevUseVsync == bVsync)
+		return;
+
+	hint[0] = '0' + bVsync;
+	hint[1] = 0;
+	SDL_SetHintWithPriority(SDL_HINT_RENDER_VSYNC, hint, SDL_HINT_OVERRIDE);
+	bPrevUseVsync = bVsync;
+}
+
+/**
+ * Frame skip limit to use, with the fast forward override taken into account.
+ */
+int Screen_GetMaxFrameSkips(void)
+{
+	if (ConfigureParams.Screen.bFastForwardBoost
+	    && ConfigureParams.System.bFastForward)
+		return FASTFORWARD_FRAMESKIP;
+	return ConfigureParams.Screen.nFrameSkips;
+}
+
+/**
+ * Apply or undo the fast forward screen overrides.
+ *
+ * Called on every VBL, so that fast forward is noticed whatever enabled
+ * it: shortcut key, remote debugger, command line option or native feature.
+ */
+void Screen_UpdateFastForward(void)
+{
+	static bool bPrevBoost = false;
+	static int nNormalFrameSkips;
+	bool bBoost;
+
+	bBoost = (ConfigureParams.Screen.bFastForwardBoost
+		  && ConfigureParams.System.bFastForward);
+	if (bBoost == bPrevBoost)
+		return;
+	bPrevBoost = bBoost;
+
+	Screen_SetVsyncHint();
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+	/* the hint is used only when a renderer is created, so the
+	 * current one needs to be changed directly
+	 */
+	if (sdlRenderer)
+		SDL_RenderSetVSync(sdlRenderer, Screen_UseVsync());
+#endif
+
+	if (bBoost)
+	{
+		/* fast forwarding raises the frame skip, so remember what
+		 * it was to be able to put it back
+		 */
+		nNormalFrameSkips = nFrameSkips;
+	}
+	else
+	{
+		nFrameSkips = nNormalFrameSkips;
+	}
+}
+
+/**
  * Change the SDL video mode.
  * @return true if mode has been changed, false if change was not necessary
  */
@@ -388,7 +471,6 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 	Uint32 sdlVideoFlags;
 	char *psSdlVideoDriver;
 	bool bUseDummyMode;
-	static bool bPrevUseVsync = false;
 	static bool bPrevInFullScreen;
 	int win_width, win_height;
 	float scale = 1.0;
@@ -457,12 +539,7 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 	}
 	bPrevInFullScreen = bInFullScreen;
 
-	if (bPrevUseVsync != ConfigureParams.Screen.bUseVsync)
-	{
-		char hint[2] = { '0' + ConfigureParams.Screen.bUseVsync, 0 };
-		SDL_SetHintWithPriority(SDL_HINT_RENDER_VSYNC, hint, SDL_HINT_OVERRIDE);
-		bPrevUseVsync = ConfigureParams.Screen.bUseVsync;
-	}
+	Screen_SetVsyncHint();
 
 	/* Disable closing Hatari with alt+F4 under Windows as alt+F4 can be used by some emulated programs */
 	SDL_SetHintWithPriority(SDL_HINT_WINDOWS_NO_CLOSE_ON_ALT_F4, "1", SDL_HINT_OVERRIDE);

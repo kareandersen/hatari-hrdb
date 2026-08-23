@@ -314,6 +314,7 @@ typedef struct
   bool bKeepResolution;
   bool bResizable;
   bool bUseVsync;
+  bool bFastForwardBoost;
   bool bUseSdlRenderer;
   int ScreenShotFormat;
   char szScreenShotDir[FILENAME_MAX];

@@ -114,7 +114,8 @@ static SGOBJ monitordlg[] =
 #define DLGSCRN_GPUSCALE    37
 #define DLGSCRN_RESIZABLE   38
 #define DLGSCRN_VSYNC       39
-#define DLGSCRN_EXIT_WINDOW 40
+#define DLGSCRN_FFBOOST     40
+#define DLGSCRN_EXIT_WINDOW 41
 
 /* needs to match Frame skip values in windowdlg[]! */
 static const int skip_frames[] = { 0, 1, 2, 4, AUTO_FRAMESKIP_LIMIT };
@@ -172,6 +173,8 @@ static SGOBJ windowdlg[] =
 	{ SGCHECKBOX, 0, 0, 12,20, 20,1, "GPU scal_ing" },
 	{ SGCHECKBOX, 0, 0, 27,20, 20,1, "Resi_zable" },
 	{ SGCHECKBOX, 0, 0, 40,20, 11,1, "_VSync" },
+
+	{ SGCHECKBOX, 0, 0,  4,21, 38,1, "Fas_t forward: no VSync, frame skip 25" },
 
 	{ SGBUTTON, SG_DEFAULT, 0, 17,22, 20,1, "Back to main menu" },
 	{ SGSTOP, 0, 0, 0,0, 0,0, NULL }
@@ -442,6 +445,11 @@ void Dialog_WindowDlg(void)
 	else
 		windowdlg[DLGSCRN_VSYNC].state &= ~SG_SELECTED;
 
+	if (ConfigureParams.Screen.bFastForwardBoost)
+		windowdlg[DLGSCRN_FFBOOST].state |= SG_SELECTED;
+	else
+		windowdlg[DLGSCRN_FFBOOST].state &= ~SG_SELECTED;
+
 	/* The window dialog main loop */
 	do
 	{
@@ -543,4 +551,5 @@ void Dialog_WindowDlg(void)
 	ConfigureParams.Screen.bResizable = (windowdlg[DLGSCRN_RESIZABLE].state & SG_SELECTED);
 	ConfigureParams.Screen.bUseSdlRenderer = (windowdlg[DLGSCRN_GPUSCALE].state & SG_SELECTED);
 	ConfigureParams.Screen.bUseVsync = (windowdlg[DLGSCRN_VSYNC].state & SG_SELECTED);
+	ConfigureParams.Screen.bFastForwardBoost = (windowdlg[DLGSCRN_FFBOOST].state & SG_SELECTED);
 }

@@ -141,6 +141,11 @@
 /* anything above 4 uses automatic frameskip */
 #define AUTO_FRAMESKIP_LIMIT	5
 
+/* frame skip used while fast forwarding, when that is set to
+ * override the normal screen settings (see bFastForwardBoost)
+ */
+#define FASTFORWARD_FRAMESKIP	25
+
 extern int STRes;
 extern int TTRes;
 extern int nFrameSkips;

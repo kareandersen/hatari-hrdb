@@ -356,6 +356,9 @@ void Main_WaitOnVbl(void)
 		exit(0);
 	}
 
+	/* catch fast forward being switched on or off, whatever did it */
+	Screen_UpdateFastForward();
+
 //	FrameDuration_micro = (int64_t) ( 1000000.0 / nScreenRefreshRate + 0.5 );	/* round to closest integer */
 	FrameDuration_micro = ClocksTimings_GetVBLDuration_micro ( ConfigureParams.System.nMachineType , nScreenRefreshRate );
 	FrameDuration_micro *= nVBLSlowdown;
@@ -383,7 +386,7 @@ void Main_WaitOnVbl(void)
 			if (!nFirstMilliTick)
 				nFirstMilliTick = Main_GetTicks();
 		}
-		if (nFrameSkips < ConfigureParams.Screen.nFrameSkips)
+		if (nFrameSkips < Screen_GetMaxFrameSkips())
 		{
 			nFrameSkips += 1;
 			Log_Printf(LOG_DEBUG, "Increased frameskip to %d\n", nFrameSkips);
@@ -400,7 +403,7 @@ void Main_WaitOnVbl(void)
 	 * the effect of single frameskip, decrease frameskip
 	 */
 	if (nFrameSkips > 0
-	    && ConfigureParams.Screen.nFrameSkips >= AUTO_FRAMESKIP_LIMIT
+	    && Screen_GetMaxFrameSkips() >= AUTO_FRAMESKIP_LIMIT
 	    && 2*nDelay > FrameDuration_micro/nFrameSkips)
 	{
 		nFrameSkips -= 1;
