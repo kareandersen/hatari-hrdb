@@ -122,6 +122,10 @@ public:
     void resetWarm();
     void resetCold();
 
+    // Re-run the launch-time debugger setup (symbols, speed, breakpoints) so
+    // that a reboot leaves the program set up like the original launch did.
+    void armProgramStartScript();
+
     FileWatcher* createFileWatcherInstance();
 
     void setHatariProcess(DetachableProcess* pProc);

@@ -167,6 +167,9 @@ void Session::resetWarm()
 {
     m_pDispatcher->ResetWarm();
 
+    // Reboot should set the program up like the original launch did
+    armProgramStartScript();
+
     // This will re-request from Hatari, which should return
     // an empty symbol table.
     m_pDispatcher->ReadSymbols();
@@ -180,6 +183,9 @@ void Session::resetCold()
 {
     m_pDispatcher->ResetCold();
 
+    // Reboot should set the program up like the original launch did
+    armProgramStartScript();
+
     // This will re-request from Hatari, which should return
     // an empty symbol table.
     m_pDispatcher->ReadSymbols();
@@ -187,6 +193,21 @@ void Session::resetCold()
     // Restart if in break mode
     if (!m_pTargetModel->IsRunning())
         m_pDispatcher->Run();
+}
+
+void Session::armProgramStartScript()
+{
+    // The breakpoints that run the program start script are one-shot, so they
+    // are gone by the time the machine is rebooted. Add them again, along with
+    // the boot-time fast-forward. Only possible when we launched Hatari
+    // ourselves, since the script file is generated at that point.
+    if (!m_pHatariProcess || !m_pProgramStartScript->exists())
+        return;
+
+    const QStringList commands = GenerateStartupCommands(m_launchSettings,
+                                                         m_pProgramStartScript->fileName());
+    for (const QString& command : commands)
+        m_pDispatcher->SendConsoleCommand(command.toStdString());
 }
 
 FileWatcher* Session::createFileWatcherInstance()

@@ -45,6 +45,34 @@ void LaunchSettings::saveSettings(QSettings &settings) const
     settings.endGroup();
 }
 
+QStringList GenerateStartupCommands(const LaunchSettings& settings, const QString& progStartScriptFilename)
+{
+    QStringList commands;
+
+    if (settings.m_fastLaunch)
+        commands << "setopt --fast-forward 1";   // speed = 1 until program start
+
+    // Generate some commands for
+    // Break at boot/start commands
+    if (settings.m_breakMode == LaunchSettings::BreakMode::kBoot)
+        commands << "b pc ! 0 : once";     // don't run the breakpoint file yet
+    else if (settings.m_breakMode == LaunchSettings::BreakMode::kBootsector)
+        commands << "b pc=($4c6): once";
+
+    if (settings.m_breakMode == LaunchSettings::BreakMode::kProgStart)
+    {
+        // Break at program start and run the program start script
+        commands << "b pc=TEXT && pc<$e00000 :once :file " + progStartScriptFilename;
+    }
+    else if (settings.m_fastLaunch ||
+             settings.m_breakMode == LaunchSettings::BreakMode::kProgramBreakpoint)
+    {
+        // run bp file but don't stop
+        commands << "b pc=TEXT && pc<$e00000 :trace :once :file " + progStartScriptFilename;
+    }
+    return commands;
+}
+
 bool LaunchHatari(const LaunchSettings& settings, Session* pSession)
 {
     // Create a copy of the args that we can adjust
@@ -133,27 +161,9 @@ bool LaunchHatari(const LaunchSettings& settings, Session* pSession)
             QTextStream ref(&tmpContents);
             QString progStartFilename = pSession->m_pProgramStartScript->fileName();
 
-            if (settings.m_fastLaunch)
-                ref << "setopt --fast-forward 1\r\n";   // speed=1 in startup file
-
-            // Generate some commands for
-            // Break at boot/start commands
-            if (settings.m_breakMode == LaunchSettings::BreakMode::kBoot)
-                ref << "b pc ! 0 : once\r\n";     // don't run the breakpoint file yet
-            else if (settings.m_breakMode == LaunchSettings::BreakMode::kBootsector)
-                ref << "b pc=($4c6): once\r\n";
-
-            if (settings.m_breakMode == LaunchSettings::BreakMode::kProgStart)
-            {
-                // Break at program start and run the program start script
-                ref << "b pc=TEXT && pc<$e00000 :once :file " << progStartFilename << "\r\n";
-            }
-            else if (settings.m_fastLaunch ||
-                     settings.m_breakMode == LaunchSettings::BreakMode::kProgramBreakpoint)
-            {
-               // run bp file but don't stop
-                ref << "b pc=TEXT && pc<$e00000 :trace :once :file " << progStartFilename << "\r\n";
-            }
+            const QStringList commands = GenerateStartupCommands(settings, progStartFilename);
+            for (const QString& command : commands)
+                ref << command << "\r\n";
 
             // Create the temp file
             // In theory we need to be careful about reuse?

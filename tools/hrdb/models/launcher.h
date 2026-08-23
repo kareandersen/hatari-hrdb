@@ -37,6 +37,12 @@ public:
     ExceptionMask m_exceptionMask;
 };
 
+// Debugger commands that set up a launched program: fast-forward during boot,
+// plus the breakpoints that stop at boot/program start and run the program
+// start script. Also re-applied on reset, so that a reboot sets the program
+// up in the same way as the original launch.
+QStringList GenerateStartupCommands(const LaunchSettings& settings, const QString& progStartScriptFilename);
+
 // Returns true on success (Qt doesn't offer more options?)
 bool LaunchHatari(const LaunchSettings& settings, Session* pSession);
 
