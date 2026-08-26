@@ -103,6 +103,7 @@ static const struct Config_Tag configs_Screen[] =
 	{ "szScreenShotDir", String_Tag, ConfigureParams.Screen.szScreenShotDir },
 	{ "bUseVsync", Bool_Tag, &ConfigureParams.Screen.bUseVsync },
 	{ "bFastForwardBoost", Bool_Tag, &ConfigureParams.Screen.bFastForwardBoost },
+	{ "nFastForwardFrameSkips", Int_Tag, &ConfigureParams.Screen.nFastForwardFrameSkips },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -818,6 +819,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Screen.bUseSdlRenderer = true;
 	ConfigureParams.Screen.bUseVsync = false;
 	ConfigureParams.Screen.bFastForwardBoost = false;
+	ConfigureParams.Screen.nFastForwardFrameSkips = FASTFORWARD_FRAMESKIP;
 #if HAVE_LIBPNG
 	ConfigureParams.Screen.ScreenShotFormat = SCREEN_SNAPSHOT_PNG;
 #else

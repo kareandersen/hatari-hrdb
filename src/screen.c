@@ -418,7 +418,7 @@ int Screen_GetMaxFrameSkips(void)
 {
 	if (ConfigureParams.Screen.bFastForwardBoost
 	    && ConfigureParams.System.bFastForward)
-		return FASTFORWARD_FRAMESKIP;
+		return ConfigureParams.Screen.nFastForwardFrameSkips;
 	return ConfigureParams.Screen.nFrameSkips;
 }
 

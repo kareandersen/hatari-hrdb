@@ -94,31 +94,35 @@ static SGOBJ monitordlg[] =
 #define DLGSCRN_SKIP1       10
 #define DLGSCRN_SKIP2       11
 #define DLGSCRN_SKIP3       12
-#define DLGSCRN_SKIP4       13
-#define DLGSCRN_KEEP_RES_ST 16
-#define DLGSCRN_KEEP_RES    17
-#define DLGSCRN_MAX_WLESS   19
-#define DLGSCRN_MAX_WTEXT   20
-#define DLGSCRN_MAX_WMORE   21
-#define DLGSCRN_MAX_HLESS   23
-#define DLGSCRN_MAX_HTEXT   24
-#define DLGSCRN_MAX_HMORE   25
-#define DLGSCRN_CAPTURE     27
-#define DLGSCRN_FORMAT_PNG  28
-#define DLGSCRN_FORMAT_BMP  29
-#define DLGSCRN_FORMAT_NEO  30
-#define DLGSCRN_FORMAT_XIMG 31
-#define DLGSCRN_CAPTURE_DIR 32
-#define DLGSCRN_RECANIM     34
-#define DLGSCRN_CROP        35
-#define DLGSCRN_GPUSCALE    37
-#define DLGSCRN_RESIZABLE   38
-#define DLGSCRN_VSYNC       39
-#define DLGSCRN_FFBOOST     40
+#define DLGSCRN_FFBOOST     13
+#define DLGSCRN_FFSKIPS     14
+#define DLGSCRN_KEEP_RES_ST 17
+#define DLGSCRN_KEEP_RES    18
+#define DLGSCRN_MAX_WLESS   20
+#define DLGSCRN_MAX_WTEXT   21
+#define DLGSCRN_MAX_WMORE   22
+#define DLGSCRN_MAX_HLESS   24
+#define DLGSCRN_MAX_HTEXT   25
+#define DLGSCRN_MAX_HMORE   26
+#define DLGSCRN_CAPTURE     28
+#define DLGSCRN_FORMAT_PNG  29
+#define DLGSCRN_FORMAT_BMP  30
+#define DLGSCRN_FORMAT_NEO  31
+#define DLGSCRN_FORMAT_XIMG 32
+#define DLGSCRN_CAPTURE_DIR 33
+#define DLGSCRN_RECANIM     35
+#define DLGSCRN_CROP        36
+#define DLGSCRN_GPUSCALE    38
+#define DLGSCRN_RESIZABLE   39
+#define DLGSCRN_VSYNC       40
 #define DLGSCRN_EXIT_WINDOW 41
 
 /* needs to match Frame skip values in windowdlg[]! */
-static const int skip_frames[] = { 0, 1, 2, 4, AUTO_FRAMESKIP_LIMIT };
+static const int skip_frames[] = { 0, 1, 2, AUTO_FRAMESKIP_LIMIT };
+
+/* how many digits the fast forward frame skip field takes */
+#define FFSKIPS_SIZE 2
+static char sFFSkips[FFSKIPS_SIZE+1];
 
 /* Strings for doubled resolution max width and height */
 static char sMaxWidth[5];
@@ -143,8 +147,9 @@ static SGOBJ windowdlg[] =
 	{ SGRADIOBUT, 0, 0, 21,5,  5,1, "_Off" },
 	{ SGRADIOBUT, 0, 0, 21,6,  3,1, "_1" },
 	{ SGRADIOBUT, 0, 0, 21,7,  3,1, "_2" },
-	{ SGRADIOBUT, 0, 0, 21,8,  3,1, "_4" },
-	{ SGRADIOBUT, 0, 0, 21,9,  6,1, "_Auto" },
+	{ SGRADIOBUT, 0, 0, 21,8,  6,1, "_Auto" },
+	{ SGCHECKBOX, 0, 0, 21,9,  6,1, "FF_WD" },
+	{ SGEDITFIELD, 0, 0, 28,9, FFSKIPS_SIZE,1, sFFSkips },
 	{ SGTEXT,     0, 0, 35,4, 10,1, "resolution" },
 	{ SGTEXT,     0, 0, 35,5, 13,1, "in fullscreen" },
 	{ SGTEXT,     0, 0, 33,2,  1,1, "" },
@@ -173,8 +178,6 @@ static SGOBJ windowdlg[] =
 	{ SGCHECKBOX, 0, 0, 12,20, 20,1, "GPU scal_ing" },
 	{ SGCHECKBOX, 0, 0, 27,20, 20,1, "Resi_zable" },
 	{ SGCHECKBOX, 0, 0, 40,20, 11,1, "_VSync" },
-
-	{ SGCHECKBOX, 0, 0,  4,21, 38,1, "Fas_t forward: no VSync, frame skip 25" },
 
 	{ SGBUTTON, SG_DEFAULT, 0, 17,22, 20,1, "Back to main menu" },
 	{ SGSTOP, 0, 0, 0,0, 0,0, NULL }
@@ -396,6 +399,13 @@ void Dialog_WindowDlg(void)
 	}
 	windowdlg[DLGSCRN_SKIP0+skip].state |= SG_SELECTED;
 
+	if (ConfigureParams.Screen.bFastForwardBoost)
+		windowdlg[DLGSCRN_FFBOOST].state |= SG_SELECTED;
+	else
+		windowdlg[DLGSCRN_FFBOOST].state &= ~SG_SELECTED;
+	snprintf(sFFSkips, sizeof(sFFSkips), "%d",
+	         ConfigureParams.Screen.nFastForwardFrameSkips);
+
 	Resolution_GetDesktopSize(&deskw, &deskh);
 	maxw = ConfigureParams.Screen.nMaxWidth;
 	maxh = ConfigureParams.Screen.nMaxHeight;
@@ -444,11 +454,6 @@ void Dialog_WindowDlg(void)
 		windowdlg[DLGSCRN_VSYNC].state |= SG_SELECTED;
 	else
 		windowdlg[DLGSCRN_VSYNC].state &= ~SG_SELECTED;
-
-	if (ConfigureParams.Screen.bFastForwardBoost)
-		windowdlg[DLGSCRN_FFBOOST].state |= SG_SELECTED;
-	else
-		windowdlg[DLGSCRN_FFBOOST].state &= ~SG_SELECTED;
 
 	/* The window dialog main loop */
 	do
@@ -535,7 +540,7 @@ void Dialog_WindowDlg(void)
 	else if (windowdlg[DLGSCRN_DRIVELED].state & SG_SELECTED)
 		ConfigureParams.Screen.bShowDriveLed = true;
 
-	for (i = DLGSCRN_SKIP0; i <= DLGSCRN_SKIP4; i++)
+	for (i = DLGSCRN_SKIP0; i <= DLGSCRN_SKIP3; i++)
 	{
 		if (windowdlg[i].state & SG_SELECTED)
 		{
@@ -551,5 +556,7 @@ void Dialog_WindowDlg(void)
 	ConfigureParams.Screen.bResizable = (windowdlg[DLGSCRN_RESIZABLE].state & SG_SELECTED);
 	ConfigureParams.Screen.bUseSdlRenderer = (windowdlg[DLGSCRN_GPUSCALE].state & SG_SELECTED);
 	ConfigureParams.Screen.bUseVsync = (windowdlg[DLGSCRN_VSYNC].state & SG_SELECTED);
+
 	ConfigureParams.Screen.bFastForwardBoost = (windowdlg[DLGSCRN_FFBOOST].state & SG_SELECTED);
+	ConfigureParams.Screen.nFastForwardFrameSkips = Opt_ValueAlignMinMax(atoi(sFFSkips), 1, 0, 99);
 }

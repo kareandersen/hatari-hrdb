@@ -326,6 +326,7 @@ typedef struct
   int nMaxWidth;
   int nMaxHeight;
   int nFrameSkips;
+  int nFastForwardFrameSkips;
 } CNF_SCREEN;
 
 
