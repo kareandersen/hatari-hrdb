@@ -312,7 +312,7 @@ void Statusbar_Init(SDL_Surface *surf)
 	BltColorOn  = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
 	RecColorOff = SDL_MapRGB(surf->format, 0x40, 0x00, 0x00);
 	RecColorOn  = SDL_MapRGB(surf->format, 0xe0, 0x00, 0x00);
-	GrayBg      = SDL_MapRGB(surf->format, 0xc0, 0xc0, 0xc0);
+	GrayBg      = SDL_MapRGB(surf->format, 0x20, 0x20, 0x20);
 
 	/* disable leds */
 	for (i = 0; i < MAX_DRIVE_LEDS; i++)

@@ -106,7 +106,8 @@ static SDL_Surface *SDLGui_LoadXBM(int w, int h, const Uint8 *pXbmBits)
  */
 int SDLGui_Init(void)
 {
-	SDL_Color blackWhiteColors[2] = {{255, 255, 255, 255}, {0, 0, 0, 255}};
+	/* index 0 is the transparent background, index 1 the text itself */
+	SDL_Color fontColors[2] = {{0, 0, 0, 255}, {255, 255, 255, 255}};
 
 	if (pSmallFontGfx && pBigFontGfx)
 	{
@@ -124,8 +125,8 @@ int SDLGui_Init(void)
 	}
 
 	/* Set color palette of the font graphics: */
-	SDL_SetPaletteColors(pSmallFontGfx->format->palette, blackWhiteColors, 0, 2);
-	SDL_SetPaletteColors(pBigFontGfx->format->palette, blackWhiteColors, 0, 2);
+	SDL_SetPaletteColors(pSmallFontGfx->format->palette, fontColors, 0, 2);
+	SDL_SetPaletteColors(pBigFontGfx->format->palette, fontColors, 0, 2);
 
 	/* Set font color 0 as transparent: */
 	SDL_SetColorKey(pSmallFontGfx, SDL_RLEACCEL, 0);
@@ -187,21 +188,21 @@ int SDLGui_SetScreen(SDL_Surface *pScrn)
 	sdlgui_fontheight = pFontGfx->h/16;
 
 	/* scrollbar */
-	colors.darkbar   = SDL_MapRGB(pSdlGuiScrn->format, 64, 64, 64);
-	colors.midbar    = SDL_MapRGB(pSdlGuiScrn->format,128,128,128);
-	colors.lightbar  = SDL_MapRGB(pSdlGuiScrn->format,196,196,196);
+	colors.darkbar   = SDL_MapRGB(pSdlGuiScrn->format, 20, 20, 20);
+	colors.midbar    = SDL_MapRGB(pSdlGuiScrn->format, 56, 56, 56);
+	colors.lightbar  = SDL_MapRGB(pSdlGuiScrn->format, 96, 96, 96);
 	/* buttons, midgray is also normal bg color */
-	colors.darkgrey  = SDL_MapRGB(pSdlGuiScrn->format,128,128,128);
-	colors.midgrey   = SDL_MapRGB(pSdlGuiScrn->format,192,192,192);
-	colors.lightgrey = SDL_MapRGB(pSdlGuiScrn->format,255,255,255);
+	colors.darkgrey  = SDL_MapRGB(pSdlGuiScrn->format, 12, 12, 12);
+	colors.midgrey   = SDL_MapRGB(pSdlGuiScrn->format, 32, 32, 32);
+	colors.lightgrey = SDL_MapRGB(pSdlGuiScrn->format, 80, 80, 80);
 	/* others */
-	colors.focus     = SDL_MapRGB(pSdlGuiScrn->format,212,212,212);
-	colors.cursor    = SDL_MapRGB(pSdlGuiScrn->format,128,128,128);
+	colors.focus     = SDL_MapRGB(pSdlGuiScrn->format, 56, 56, 56);
+	colors.cursor    = SDL_MapRGB(pSdlGuiScrn->format,200,200,200);
 	if (sdlgui_fontheight < 16)
 		colors.underline = SDL_MapRGB(pSdlGuiScrn->format,255,0,255);
 	else
-		colors.underline = SDL_MapRGB(pSdlGuiScrn->format,0,0,0);
-	colors.editfield = SDL_MapRGB(pSdlGuiScrn->format,160,160,160);
+		colors.underline = SDL_MapRGB(pSdlGuiScrn->format,255,255,255);
+	colors.editfield = SDL_MapRGB(pSdlGuiScrn->format, 20, 20, 20);
 
 	return 0;
 }
