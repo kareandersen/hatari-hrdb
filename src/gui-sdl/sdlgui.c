@@ -102,6 +102,39 @@ static SDL_Surface *SDLGui_LoadXBM(int w, int h, const Uint8 *pXbmBits)
 
 /*-----------------------------------------------------------------------*/
 /**
+ * Load an 8 bit per pixel coverage map into an alpha blended SDL_Surface,
+ * so that the font can be drawn anti-aliased on any background.
+ */
+static SDL_Surface *SDLGui_LoadAlphaFont(int w, int h, const Uint8 *pCoverage)
+{
+	SDL_Surface *bitmap;
+	Uint32 *dstbits;
+	int x, y;
+
+	bitmap = SDL_CreateRGBSurfaceWithFormat(0, w, h, 32, SDL_PIXELFORMAT_ARGB8888);
+	if (bitmap == NULL)
+	{
+		Log_Printf(LOG_ERROR, "SDLGui: failed to allocate font: %s", SDL_GetError());
+		return NULL;
+	}
+
+	for (y = 0; y < h; y++)
+	{
+		dstbits = (Uint32 *)((Uint8 *)bitmap->pixels + y * bitmap->pitch);
+		for (x = 0; x < w; x++)
+		{
+			/* white text, coverage gives the alpha */
+			dstbits[x] = ((Uint32)pCoverage[y*w + x] << 24) | 0x00FFFFFF;
+		}
+	}
+	SDL_SetSurfaceBlendMode(bitmap, SDL_BLENDMODE_BLEND);
+
+	return bitmap;
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
  * Initialize the GUI.
  */
 int SDLGui_Init(void)
@@ -117,20 +150,19 @@ int SDLGui_Init(void)
 
 	/* Initialize the font graphics: */
 	pSmallFontGfx = SDLGui_LoadXBM(font5x8_width, font5x8_height, font5x8_bits);
-	pBigFontGfx = SDLGui_LoadXBM(font10x16_width, font10x16_height, font10x16_bits);
+	pBigFontGfx = SDLGui_LoadAlphaFont(font10x16_width, font10x16_height,
+	                                   font10x16_coverage);
 	if (pSmallFontGfx == NULL || pBigFontGfx == NULL)
 	{
 		Log_Printf(LOG_ERROR, "SDLGui: cannot init font graphics!\n");
 		return -1;
 	}
 
-	/* Set color palette of the font graphics: */
+	/* Set color palette of the small font graphics: */
 	SDL_SetPaletteColors(pSmallFontGfx->format->palette, fontColors, 0, 2);
-	SDL_SetPaletteColors(pBigFontGfx->format->palette, fontColors, 0, 2);
 
-	/* Set font color 0 as transparent: */
+	/* Set small font color 0 as transparent: */
 	SDL_SetColorKey(pSmallFontGfx, SDL_RLEACCEL, 0);
-	SDL_SetColorKey(pBigFontGfx, SDL_RLEACCEL, 0);
 
 	return 0;
 }
