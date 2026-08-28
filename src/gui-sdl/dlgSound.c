@@ -16,22 +16,23 @@ const char DlgSound_fileid[] = "Hatari dlgSound.c";
 
 #define DLGSOUND_ENABLE     3
 #define DLGSOUND_SYNC       4
-#define DLGSOUND_11KHZ      6
-#define DLGSOUND_12KHZ      7
-#define DLGSOUND_16KHZ      8
-#define DLGSOUND_22KHZ      9
-#define DLGSOUND_25KHZ      10
-#define DLGSOUND_32KHZ      11
-#define DLGSOUND_44KHZ      12
-#define DLGSOUND_48KHZ      13
-#define DLGSOUND_50KHZ      14
-#define DLGSOUND_MODEL      16
-#define DLGSOUND_TABLE      17
-#define DLGSOUND_LINEAR     18
-#define DLGSOUND_RECNAME    22
-#define DLGSOUND_RECBROWSE  23
-#define DLGSOUND_RECORD     24
-#define DLGSOUND_EXIT       25
+#define DLGSOUND_SMOOTH     5
+#define DLGSOUND_11KHZ      7
+#define DLGSOUND_12KHZ      8
+#define DLGSOUND_16KHZ      9
+#define DLGSOUND_22KHZ      10
+#define DLGSOUND_25KHZ      11
+#define DLGSOUND_32KHZ      12
+#define DLGSOUND_44KHZ      13
+#define DLGSOUND_48KHZ      14
+#define DLGSOUND_50KHZ      15
+#define DLGSOUND_MODEL      17
+#define DLGSOUND_TABLE      18
+#define DLGSOUND_LINEAR     19
+#define DLGSOUND_RECNAME    23
+#define DLGSOUND_RECBROWSE  24
+#define DLGSOUND_RECORD     25
+#define DLGSOUND_EXIT       26
 
 
 static char dlgRecordName[35];
@@ -45,6 +46,7 @@ static SGOBJ sounddlg[] =
 	{ SGTEXT,     0,0,  4, 2,  5,1, "SOUND" },
 	{ SGCHECKBOX, 0,0, 13, 2,  9,1, "_Enabled" },
 	{ SGCHECKBOX, 0,0, 25, 2, 13,1, "Syn_chronize" },
+	{ SGCHECKBOX, 0,0, 25, 3, 13,1, "Smo_oth rate" },
 
 	{ SGTEXT,     0,0,  4, 4, 17,1, "Playback quality:" },
 	{ SGRADIOBUT, 0,0,  2, 6, 10,1, "11_025 Hz" },
@@ -111,6 +113,11 @@ void Dialog_SoundDlg(void)
 		sounddlg[DLGSOUND_SYNC].state |= SG_SELECTED;
 	else
 		sounddlg[DLGSOUND_SYNC].state &= ~SG_SELECTED;
+
+	if (ConfigureParams.Sound.bSoundSyncSmooth)
+		sounddlg[DLGSOUND_SMOOTH].state |= SG_SELECTED;
+	else
+		sounddlg[DLGSOUND_SMOOTH].state &= ~SG_SELECTED;
 
 	for (i = DLGSOUND_11KHZ; i <= DLGSOUND_50KHZ; i++)
 		sounddlg[i].state &= ~SG_SELECTED;
@@ -181,6 +188,7 @@ void Dialog_SoundDlg(void)
 	ConfigureParams.Sound.bEnableSound = (sounddlg[DLGSOUND_ENABLE].state & SG_SELECTED);
 
 	ConfigureParams.Sound.bEnableSoundSync = (sounddlg[DLGSOUND_SYNC].state & SG_SELECTED);
+	ConfigureParams.Sound.bSoundSyncSmooth = (sounddlg[DLGSOUND_SMOOTH].state & SG_SELECTED);
 
 	for (i = DLGSOUND_11KHZ; i <= DLGSOUND_50KHZ; i++)
 	{

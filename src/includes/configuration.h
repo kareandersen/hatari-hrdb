@@ -71,6 +71,7 @@ typedef struct
   bool bEnableMicrophone;
   bool bEnableSound;
   bool bEnableSoundSync;
+  bool bSoundSyncSmooth;
   int nPlaybackFreq;
   int SdlAudioBufferSize;
   char szYMCaptureFileName[FILENAME_MAX];

@@ -28,6 +28,12 @@ int SdlAudioBufferSize = 0;			/* in ms (0 = use default) */
 int pulse_swallowing_count = 0;			/* Sound disciplined emulation rate controlled by  */
 						/*  window comparator and pulse swallowing counter */
 
+/* Smoothed sound synchronization (bSoundSyncSmooth) */
+#define SOUND_SYNC_SHIFT	6	/* buffer level filter, about 1.5 seconds */
+#define SOUND_SYNC_DIVISOR	48	/* samples of error per microsecond of correction */
+#define SOUND_SYNC_MAX_ADJUST	10	/* microseconds per frame, 0.05% at 50 Hz */
+static int SoundSyncLevel = -1;		/* filtered buffer level, <0 until started */
+
 /*-----------------------------------------------------------------------*/
 /**
  * SDL audio callback function - copy emulation sound to audio system.
@@ -60,6 +66,44 @@ static void Audio_CallBack(void *userdata, Uint8 *stream, int len)
 		nSamplesPerFrame = nAudioFrequency/nScreenRefreshRate;
 		window = (nSamplesPerFrame > SoundBufferSize) ? nSamplesPerFrame : SoundBufferSize;
 
+		if (ConfigureParams.Sound.bSoundSyncSmooth)
+		{
+			int level, error;
+
+			/* The buffer level swings by about one callback worth
+			 * of samples, which is wider than the dead band of the
+			 * comparator below, so filter it before looking at it,
+			 * otherwise the emulation rate is changed constantly.
+			 */
+			if (SoundSyncLevel < 0
+			    || abs((SoundSyncLevel >> SOUND_SYNC_SHIFT) - nGeneratedSamples) > 2*window)
+				SoundSyncLevel = nGeneratedSamples << SOUND_SYNC_SHIFT;	/* (re)start */
+			SoundSyncLevel += nGeneratedSamples - (SoundSyncLevel >> SOUND_SYNC_SHIFT);
+			level = SoundSyncLevel >> SOUND_SYNC_SHIFT;
+
+			/* Only a few dozen ppm separate the emulated rate from
+			 * the sound card, so answer with a small proportional
+			 * correction instead of the 0.58% steps below, which
+			 * keeps the emulation rate steady enough for the host
+			 * display to hold a constant phase against it.
+			 */
+			error = level - (window << 1);
+			pulse_swallowing_count = error / SOUND_SYNC_DIVISOR;
+			if (pulse_swallowing_count > SOUND_SYNC_MAX_ADJUST)
+				pulse_swallowing_count = SOUND_SYNC_MAX_ADJUST;
+			else if (pulse_swallowing_count < -SOUND_SYNC_MAX_ADJUST)
+				pulse_swallowing_count = -SOUND_SYNC_MAX_ADJUST;
+
+			/* A buffer about to run dry or overflow still needs the
+			 * full sized correction to recover in time
+			 */
+			if (nGeneratedSamples < (window >> 1))
+				pulse_swallowing_count = -5793 / nScreenRefreshRate;
+			else if (nGeneratedSamples > window * 3)
+				pulse_swallowing_count = 5793 / nScreenRefreshRate;
+		}
+		else
+		{
 		/* Window Comparator for SoundBufferSize */
 		if (nGeneratedSamples < window + (window >> 1))
 		/* Increase emulation rate to maintain sound synchronization */
@@ -70,6 +114,7 @@ static void Audio_CallBack(void *userdata, Uint8 *stream, int len)
 			pulse_swallowing_count = 5793 / nScreenRefreshRate;
 
 		/* Otherwise emulation rate is unaltered. */
+		}
 	}
 
 	if (nGeneratedSamples >= len)

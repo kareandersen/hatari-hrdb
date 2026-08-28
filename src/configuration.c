@@ -331,6 +331,7 @@ static const struct Config_Tag configs_Sound[] =
 	{ "bEnableMicrophone", Bool_Tag, &ConfigureParams.Sound.bEnableMicrophone },
 	{ "bEnableSound", Bool_Tag, &ConfigureParams.Sound.bEnableSound },
 	{ "bEnableSoundSync", Bool_Tag, &ConfigureParams.Sound.bEnableSoundSync },
+	{ "bSoundSyncSmooth", Bool_Tag, &ConfigureParams.Sound.bSoundSyncSmooth },
 	{ "nPlaybackFreq", Int_Tag, &ConfigureParams.Sound.nPlaybackFreq },
 	{ "nSdlAudioBufferSize", Int_Tag, &ConfigureParams.Sound.SdlAudioBufferSize },
 	{ "szYMCaptureFileName", String_Tag, ConfigureParams.Sound.szYMCaptureFileName },
@@ -831,6 +832,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Sound.bEnableMicrophone = true;
 	ConfigureParams.Sound.bEnableSound = true;
 	ConfigureParams.Sound.bEnableSoundSync = false;
+	ConfigureParams.Sound.bSoundSyncSmooth = false;
 	ConfigureParams.Sound.nPlaybackFreq = 44100;
 	File_MakePathBuf(ConfigureParams.Sound.szYMCaptureFileName,
 	                 sizeof(ConfigureParams.Sound.szYMCaptureFileName),
