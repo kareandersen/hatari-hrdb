@@ -23,6 +23,8 @@ const char Audio_fileid[] = "Hatari audio.c";
 int nAudioFrequency = 44100;			/* Sound playback frequency */
 bool bSoundWorking = false;			/* Is sound OK */
 static volatile bool bPlayingBuffer = false;	/* Is playing buffer? */
+static bool bAudioWanted = false;		/* Playback state requested by config/pause */
+static bool bAudioSuspended = false;		/* Muted because the window is hidden/unfocused */
 int SoundBufferSize = 1024 / 4;			/* Size of sound buffer (in samples) */
 int SdlAudioBufferSize = 0;			/* in ms (0 = use default) */
 int pulse_swallowing_count = 0;			/* Sound disciplined emulation rate controlled by  */
@@ -315,6 +317,11 @@ void Audio_SetOutputAudioFreq(int nNewFrequency)
  */
 void Audio_EnableAudio(bool bEnable)
 {
+	bAudioWanted = bEnable;
+
+	/* The suspend layer gates playback without touching the wanted state */
+	bEnable = bEnable && !bAudioSuspended;
+
 	if (bEnable && !bPlayingBuffer)
 	{
 		/* Start playing */
@@ -327,4 +334,26 @@ void Audio_EnableAudio(bool bEnable)
 		SDL_PauseAudio(true);
 		bPlayingBuffer = false;
 	}
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Mute/unmute on window visibility or focus changes, e.g. when the user
+ * switches virtual desktops.  Compositors (Wayland in particular) throttle
+ * hidden windows, which starves the audio buffer and makes it stutter.
+ * This is a layer on top of the normal sound on/off state: suspending
+ * pauses playback only if it was running, and resuming restores whatever
+ * state was last requested through Audio_EnableAudio().
+ */
+void Audio_Suspend(void)
+{
+	bAudioSuspended = true;
+	Audio_EnableAudio(bAudioWanted);
+}
+
+void Audio_Resume(void)
+{
+	bAudioSuspended = false;
+	Audio_EnableAudio(bAudioWanted);
 }

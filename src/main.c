@@ -713,6 +713,10 @@ void Main_EventHandler(bool remoteDebugging)
 				 */
 				Screen_UpdateRect(sdlscrn, 0, 0, 0, 0);
 				break;
+			case SDL_WINDOWEVENT_HIDDEN:
+			case SDL_WINDOWEVENT_MINIMIZED:
+				Audio_Suspend();
+				break;
 			case SDL_WINDOWEVENT_SIZE_CHANGED:
 				/* internal & external window size changes */
 				Screen_SetTextureScale(sdlscrn->w, sdlscrn->h,
@@ -733,12 +737,16 @@ void Main_EventHandler(bool remoteDebugging)
 				/* fall through */
 			case SDL_WINDOWEVENT_FOCUS_GAINED:
 				bAllowMouseWarp = true;
+				Audio_Resume();
 				break;
 			case SDL_WINDOWEVENT_LEAVE:
+				/* only pointer left, keep sound running */
 				SDL_GetMouseState(&mleave_x, &mleave_y);
-				/* fall through */
+				bAllowMouseWarp = false;
+				break;
 			case SDL_WINDOWEVENT_FOCUS_LOST:
 				bAllowMouseWarp = false;
+				Audio_Suspend();
 				break;
 			}
 			bContinueProcessing = true;
