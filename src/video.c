@@ -5014,6 +5014,9 @@ void Video_InterruptHandler_VBL ( void )
 	/* Generate 1/50th second of sound sample data, to be played by sound thread */
 	Sound_Update_VBL();
 
+	/* Stream this frame's audio to subscribed VNC clients */
+	Vnc_RecordAudio();
+
 	/* Update the blitter's stats for the previous VBL */
 	Blitter_StatsUpdateRate ( (int)( VBL_ClockCounter - VBL_ClockCounter_prev ) );
 

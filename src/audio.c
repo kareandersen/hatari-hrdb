@@ -44,6 +44,8 @@ static int SoundSyncLevel = -1;		/* filtered buffer level, <0 until started */
 static void Audio_CallBack(void *userdata, Uint8 *stream, int len)
 {
 	Sint16 *pBuffer;
+	Uint8 *pStreamStart = stream;
+	int nStreamBytes = len;
 	int i, window, nSamplesPerFrame;
 
 	pBuffer = (Sint16 *)stream;
@@ -150,6 +152,10 @@ static void Audio_CallBack(void *userdata, Uint8 *stream, int len)
 	}
 
 	AudioMixBuffer_pos_read = AudioMixBuffer_pos_read & AUDIOMIXBUFFER_SIZE_MASK;
+
+	/* Remote listener: keep consuming (and sync) but silence the local output */
+	if (Vnc_AudioStreaming())
+		memset(pStreamStart, 0, nStreamBytes);
 //fprintf ( stderr , "audio cb out len=%d gensmpl=%d idx=%d\n" , len , nGeneratedSamples , AudioMixBuffer_pos_read );
 }
 
@@ -322,8 +328,12 @@ void Audio_EnableAudio(bool bEnable)
 
 	/* The suspend layer gates playback without touching the wanted
 	 * state. A hidden window doesn't mute while a VNC client watches:
-	 * the viewer is local, so the sound output is still theirs. */
-	bEnable = bEnable && !(bAudioSuspended && !Vnc_HasClients());
+	 * the viewer is local, so the sound output is still theirs. And
+	 * while a client streams audio remotely, the device must keep
+	 * consuming samples regardless (the callback then outputs
+	 * silence locally - the listener is at the other end). */
+	if (!Vnc_AudioStreaming())
+		bEnable = bEnable && !(bAudioSuspended && !Vnc_HasClients());
 
 	if (bEnable && !bPlayingBuffer)
 	{
