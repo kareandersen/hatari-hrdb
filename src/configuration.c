@@ -579,6 +579,14 @@ static const struct Config_Tag configs_Video[] =
 	{ NULL , Error_Tag, NULL }
 };
 
+/* Used to load/save VNC display export options */
+static const struct Config_Tag configs_Vnc[] =
+{
+	{ "nPort", Int_Tag, &ConfigureParams.Vnc.nPort },
+	{ "bReportFrameInfo", Bool_Tag, &ConfigureParams.Vnc.bReportFrameInfo },
+	{ NULL , Error_Tag, NULL }
+};
+
 
 /*-----------------------------------------------------------------------*/
 /**
@@ -892,6 +900,10 @@ void Configuration_SetDefault(void)
 	                 sizeof(ConfigureParams.Video.AviRecordFile),
 	                 psWorkingDir, "hatari", "avi");
 
+	/* Set defaults for VNC display export */
+	ConfigureParams.Vnc.nPort = 0;			/* disabled */
+	ConfigureParams.Vnc.bReportFrameInfo = false;
+
 	/* Initialize the configuration file name */
 	if (File_MakePathBuf(sConfigFileName, sizeof(sConfigFileName),
 	                     psHomeDir, "hatari", "cfg"))
@@ -1159,6 +1171,7 @@ void Configuration_Load(const char *psFileName)
 	Configuration_LoadSection(psFileName, configs_Midi, "[Midi]");
 	Configuration_LoadSection(psFileName, configs_System, "[System]");
 	Configuration_LoadSection(psFileName, configs_Video, "[Video]");
+	Configuration_LoadSection(psFileName, configs_Vnc, "[VNC]");
 
 	/* Some more legacy handling: */
 	if (ConfigureParams.Keyboard.nKeymapType >= KEYMAP_OLD_LOADED)
@@ -1222,6 +1235,7 @@ void Configuration_Save(void)
 	Configuration_SaveSection(sConfigFileName, configs_Midi, "[Midi]");
 	Configuration_SaveSection(sConfigFileName, configs_System, "[System]");
 	Configuration_SaveSection(sConfigFileName, configs_Video, "[Video]");
+	Configuration_SaveSection(sConfigFileName, configs_Vnc, "[VNC]");
 }
 
 

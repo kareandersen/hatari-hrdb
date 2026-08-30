@@ -46,6 +46,7 @@ const char Screen_fileid[] = "Hatari screen.c";
 #include "statusbar.h"
 #include "vdi.h"
 #include "video.h"
+#include "vnc.h"
 #include "falcon/videl.h"
 
 #define DEBUG 0
@@ -618,6 +619,7 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 	}
 
 	Avi_SetSurface(sdlscrn);
+	Vnc_SetSurface(sdlscrn);
 
 	bRGBTableInSync = false;
 

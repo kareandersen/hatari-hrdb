@@ -56,6 +56,7 @@ const char Main_fileid[] = "Hatari main.c";
 #include "str.h"
 #include "tos.h"
 #include "video.h"
+#include "vnc.h"
 #include "avi_record.h"
 #include "debugui.h"
 #include "remotedebug.h"
@@ -594,6 +595,14 @@ void Main_EventHandler(bool remoteDebugging)
 		remotepause = Control_CheckUpdates();
 		remotepause |= RemoteDebug_Update();
 
+		/* service VNC clients (also while stopped in the debugger);
+		 * while emulation is inactive no VBL exports frames, so keep
+		 * the remote display fresh from here (statusbar messages,
+		 * debugger-driven memory/screen changes, ...) */
+		Vnc_Update();
+		if (!bEmulationActive)
+			Vnc_RecordFrame();
+
 		if ( bEmulationActive || remotepause )
 		{
 			events = SDL_PollEvent(&event);
@@ -873,6 +882,7 @@ static void Main_Init(void)
 	/* done as last, needs CPU & DSP running... */
 	DebugUI_Init();
 	RemoteDebug_Init();
+	Vnc_Init();
 }
 
 
@@ -904,6 +914,8 @@ static void Main_UnInit(void)
 	Exit680x0();
 
 	IPF_Exit();
+
+	Vnc_UnInit();
 
 	/* SDL uninit: */
 	SDL_Quit();

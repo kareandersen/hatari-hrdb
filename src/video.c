@@ -458,6 +458,7 @@ const char Video_fileid[] = "Hatari video.c";
 #include "falcon/videl.h"
 #include "blitter.h"
 #include "avi_record.h"
+#include "vnc.h"
 #include "ikbd.h"
 #include "floppy_ipf.h"
 #include "statusbar.h"
@@ -5004,6 +5005,9 @@ void Video_InterruptHandler_VBL ( void )
 	/* Record video frame is necessary */
 	if ( Avi_AreWeRecording() )
 		Avi_RecordVideoStream ();
+
+	/* Export frame to VNC clients if any */
+	Vnc_RecordFrame();
 
 	/* Store off PSG registers for YM file, is enabled */
 	YMFormat_UpdateRecording();

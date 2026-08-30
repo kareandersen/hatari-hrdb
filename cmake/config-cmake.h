@@ -12,6 +12,9 @@
 /* Define if you have the capsimage library */
 #cmakedefine HAVE_CAPSIMAGE 1
 
+/* Define if you have the libvncserver library */
+#cmakedefine HAVE_VNCSERVER 1
+
 /* Define if you have a X11 environment */
 #cmakedefine HAVE_X11 1
 

@@ -416,6 +416,13 @@ typedef struct
   char AviRecordFile[FILENAME_MAX];
 } CNF_VIDEO;
 
+/* VNC display export configuration */
+typedef struct
+{
+  int nPort;
+  bool bReportFrameInfo;
+} CNF_VNC;
+
 /* State of system is stored in this structure */
 /* On reset, variables are copied into system globals and used. */
 typedef struct
@@ -441,6 +448,7 @@ typedef struct
   CNF_MIDI Midi;
   CNF_SYSTEM System;
   CNF_VIDEO Video;
+  CNF_VNC Vnc;
 } CNF_PARAMS;
 
 

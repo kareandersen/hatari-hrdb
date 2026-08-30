@@ -120,6 +120,10 @@ enum {
 	OPT_AVIRECORD_FILE,
 	OPT_SCRSHOT_DIR,
 	OPT_SCRSHOT_FORMAT,
+#ifdef HAVE_VNCSERVER
+	OPT_VNC_PORT,
+	OPT_VNC_FRAMEINFO,
+#endif
 
 	OPT_JOYSTICK,		/* device options */
 	OPT_JOYSTICK0,
@@ -336,6 +340,12 @@ static const opt_t HatariOptions[] = {
 	  "<dir>", "Save screenshots in the directory <dir>" },
 	{ OPT_SCRSHOT_FORMAT, NULL, "--screenshot-format",
 	  "<x>", "Select file format (x = bmp/png/neo/ximg)" },
+#ifdef HAVE_VNCSERVER
+	{ OPT_VNC_PORT, NULL, "--vnc",
+	  "<x>", "Export display on localhost VNC port <x> (0 = off)" },
+	{ OPT_VNC_FRAMEINFO, NULL, "--vnc-frameinfo",
+	  "<bool>", "Send frame numbers to VNC clients as cut-text" },
+#endif
 
 	{ OPT_HEADER, NULL, NULL, NULL, "Devices" },
 	{ OPT_JOYSTICK,  "-j", "--joystick",
@@ -1418,6 +1428,22 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 				return Opt_ShowError(OPT_SCRSHOT_FORMAT, argv[i], "Unknown screenshot format");
 			}
 			break;
+
+#ifdef HAVE_VNCSERVER
+		case OPT_VNC_PORT:
+			temp = atoi(argv[++i]);
+			if (temp != 0 && (temp < 1024 || temp > 65535))
+			{
+				return Opt_ShowError(OPT_VNC_PORT, argv[i],
+						     "Invalid VNC port (use 0 or 1024-65535)");
+			}
+			ConfigureParams.Vnc.nPort = temp;
+			break;
+
+		case OPT_VNC_FRAMEINFO:
+			ok = Opt_Bool(argv[++i], OPT_VNC_FRAMEINFO, &ConfigureParams.Vnc.bReportFrameInfo);
+			break;
+#endif
 
 			/* VDI options */
 		case OPT_VDI:

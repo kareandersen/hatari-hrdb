@@ -11,6 +11,10 @@ set(SOURCES
 	shortcut.c sound.c spec512.c statusbar.c str.c tos.c utils.c
 	vdi.c inffile.c video.c wavFormat.c xbios.c ymFormat.c lilo.c)
 
+if(VncServer_FOUND)
+	set(SOURCES ${SOURCES} vnc.c)
+endif(VncServer_FOUND)
+
 if(EMSCRIPTEN)
 	set(SOURCES ${SOURCES} emscripten.js emscripten_shell.html)
 endif()
@@ -78,6 +82,10 @@ endif(CapsImage_FOUND)
 if(Capstone_FOUND)
 	include_directories(${CAPSTONE_INCLUDE_DIR})
 endif(Capstone_FOUND)
+
+if(VncServer_FOUND)
+	include_directories(${VNCSERVER_INCLUDE_DIR})
+endif(VncServer_FOUND)
 
 link_directories(${CMAKE_CURRENT_BINARY_DIR}/debug
 		 ${CMAKE_CURRENT_BINARY_DIR}/falcon
@@ -258,6 +266,10 @@ endif(Udev_FOUND)
 if(Capstone_FOUND)
 	target_link_libraries(${APP_NAME} ${CAPSTONE_LIBRARY})
 endif(Capstone_FOUND)
+
+if(VncServer_FOUND)
+	target_link_libraries(${APP_NAME} ${VNCSERVER_LIBRARY})
+endif(VncServer_FOUND)
 
 if(APPLE)
 	target_link_libraries(${APP_NAME} "-framework Cocoa")

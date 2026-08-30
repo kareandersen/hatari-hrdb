@@ -300,6 +300,15 @@ Use <file> to record AVI
 .B \-\-screenshot\-dir <dir>
 Directory for saving screenshots (default Hatari directory for
 them is OS specific).
+.TP
+.B \-\-vnc <x>
+Export the composited display on localhost VNC port <x>, with
+keyboard/mouse injection from clients (x = 0 to disable, or
+1024\-65535). Needs Hatari built with libvncserver.
+.TP
+.B \-\-vnc\-frameinfo <bool>
+Send "frame:<n>" (emulated VBL count) to VNC clients as server
+cut-text on each changed frame, for frame accounting.
 
 .SH "Devices options"
 .TP
