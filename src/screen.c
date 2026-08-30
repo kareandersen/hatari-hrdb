@@ -120,8 +120,40 @@ static bool bUseSdlRenderer;            /* true when using SDL2 renderer */
 static bool bPrevUseVsync = false;      /* vsync setting given to SDL */
 static bool bIsSoftwareRenderer;
 
+/* When the window is hidden (e.g. on another virtual desktop), Wayland
+ * compositors throttle it and presenting blocks the emulation loop.
+ * Detect the stall from the time a present takes and stop presenting,
+ * probing only occasionally; Screen_ResetPresentStall() ends the skip
+ * as soon as the window is interacted with again. */
+static bool bPresentStalled;
+
+void Screen_ResetPresentStall(void)
+{
+	bPresentStalled = false;
+}
+
 void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 {
+	static int nStallSkipCount;
+	uint32_t ticks;
+
+	/* Only bypass throttled presents while someone is actually watching
+	 * remotely; otherwise let the compositor throttle us as usual, which
+	 * saves power when Hatari sits unwatched in the background */
+	if (!Vnc_HasClients())
+	{
+		bPresentStalled = false;
+	}
+	else if (bPresentStalled)
+	{
+		/* recovery is driven by focus/expose events; the periodic
+		 * probe is only a fallback, keep it rare to avoid hiccups */
+		if (++nStallSkipCount < 250)
+			return;
+		nStallSkipCount = 0;
+	}
+
+	ticks = SDL_GetTicks();
 	if (bUseSdlRenderer)
 	{
 		SDL_UpdateTexture(sdlTexture, NULL, screen->pixels, screen->pitch);
@@ -135,6 +167,7 @@ void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 	{
 		SDL_UpdateWindowSurfaceRects(sdlWindow, rects, numrects);
 	}
+	bPresentStalled = (SDL_GetTicks() - ticks > 45);
 }
 
 void Screen_UpdateRect(SDL_Surface *screen, Sint32 x, Sint32 y, Sint32 w, Sint32 h)

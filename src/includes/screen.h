@@ -14,6 +14,7 @@ extern SDL_Window *sdlWindow;
 
 /* TODO: Get rid of the following wrappers: */
 void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects);
+void Screen_ResetPresentStall(void);
 void Screen_UpdateRect(SDL_Surface *screen, Sint32 x, Sint32 y, Sint32 w, Sint32 h);
 
 /* The 'screen' is a representation of the ST video memory	*/

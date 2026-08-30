@@ -727,6 +727,7 @@ void Main_EventHandler(bool remoteDebugging)
 				/* Note: any changes here should most likely
 				 * be done also in sdlgui.c::SDLGui_DoDialog()
 				 */
+				Screen_ResetPresentStall();
 				Screen_UpdateRect(sdlscrn, 0, 0, 0, 0);
 				break;
 			case SDL_WINDOWEVENT_HIDDEN:
@@ -753,6 +754,7 @@ void Main_EventHandler(bool remoteDebugging)
 				/* fall through */
 			case SDL_WINDOWEVENT_FOCUS_GAINED:
 				bAllowMouseWarp = true;
+				Screen_ResetPresentStall();
 				Audio_Resume();
 				break;
 			case SDL_WINDOWEVENT_LEAVE:
