@@ -727,7 +727,6 @@ void Main_EventHandler(bool remoteDebugging)
 				/* Note: any changes here should most likely
 				 * be done also in sdlgui.c::SDLGui_DoDialog()
 				 */
-				Screen_ResetPresentStall();
 				Screen_UpdateRect(sdlscrn, 0, 0, 0, 0);
 				break;
 			case SDL_WINDOWEVENT_HIDDEN:

@@ -134,7 +134,6 @@ void Screen_ResetPresentStall(void)
 
 void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 {
-	static int nStallSkipCount;
 	uint32_t ticks;
 
 	/* Only bypass throttled presents while someone is actually watching
@@ -146,11 +145,12 @@ void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 	}
 	else if (bPresentStalled)
 	{
-		/* recovery is driven by focus/expose events; the periodic
-		 * probe is only a fallback, keep it rare to avoid hiccups */
-		if (++nStallSkipCount < 250)
-			return;
-		nStallSkipCount = 0;
+		/* no periodic probing: each probe blocks long enough to drop
+		 * frames and pop the audio for every watching client. Focus
+		 * or pointer-enter ends the skip via
+		 * Screen_ResetPresentStall(); KWin's spurious expose events
+		 * to hidden windows deliberately do not. */
+		return;
 	}
 
 	ticks = SDL_GetTicks();
