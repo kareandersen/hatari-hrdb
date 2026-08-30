@@ -24,5 +24,6 @@ extern void Audio_SetOutputAudioFreq(int Frequency);
 extern void Audio_EnableAudio(bool bEnable);
 extern void Audio_Suspend(void);
 extern void Audio_Resume(void);
+extern void Audio_Recheck(void);
 
 #endif  /* HATARI_AUDIO_H */

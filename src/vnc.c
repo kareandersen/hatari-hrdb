@@ -18,6 +18,7 @@ const char Vnc_fileid[] = "Hatari vnc.c";
 
 #include "main.h"
 #include "configuration.h"
+#include "audio.h"
 #include "ikbd.h"
 #include "keymap.h"
 #include "log.h"
@@ -483,10 +484,22 @@ bool Vnc_IsActive(void)
  */
 void Vnc_Update(void)
 {
+	static bool bHadClients;
+	bool bHaveClients;
 	int i;
 
 	if (!vncScreen)
 		return;
+
+	/* audio muting and present skipping depend on whether anyone is
+	 * watching - re-evaluate when the first client arrives or the
+	 * last one leaves */
+	bHaveClients = vncScreen->clientHead != NULL;
+	if (bHaveClients != bHadClients)
+	{
+		bHadClients = bHaveClients;
+		Audio_Recheck();
+	}
 
 	/* rfbCheckFds() handles at most one message per client per call.
 	 * We are called once per frame, so drain the sockets here or a

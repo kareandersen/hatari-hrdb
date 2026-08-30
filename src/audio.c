@@ -16,6 +16,7 @@ const char Audio_fileid[] = "Hatari audio.c";
 #include "log.h"
 #include "sound.h"
 #include "dmaSnd.h"
+#include "vnc.h"
 #include "falcon/crossbar.h"
 #include "video.h"
 
@@ -319,8 +320,10 @@ void Audio_EnableAudio(bool bEnable)
 {
 	bAudioWanted = bEnable;
 
-	/* The suspend layer gates playback without touching the wanted state */
-	bEnable = bEnable && !bAudioSuspended;
+	/* The suspend layer gates playback without touching the wanted
+	 * state. A hidden window doesn't mute while a VNC client watches:
+	 * the viewer is local, so the sound output is still theirs. */
+	bEnable = bEnable && !(bAudioSuspended && !Vnc_HasClients());
 
 	if (bEnable && !bPlayingBuffer)
 	{
@@ -355,5 +358,14 @@ void Audio_Suspend(void)
 void Audio_Resume(void)
 {
 	bAudioSuspended = false;
+	Audio_EnableAudio(bAudioWanted);
+}
+
+/**
+ * Re-apply the current audio state after conditions feeding into it
+ * changed (e.g. a VNC client arrived or left).
+ */
+void Audio_Recheck(void)
+{
 	Audio_EnableAudio(bAudioWanted);
 }
