@@ -613,7 +613,14 @@ void Main_EventHandler(bool remoteDebugging)
 			/* last (shortcut) event activated emulation? */
 			if ( bEmulationActive )
 				break;
-			events = SDL_WaitEvent(&event);
+			/* while paused, a blocking wait would starve VNC
+			 * clients (no events come from a hidden window) - the
+			 * per-iteration Vnc_Update()/Vnc_RecordFrame() above
+			 * keep them served as long as we time out regularly */
+			if (Vnc_IsActive())
+				events = SDL_WaitEventTimeout(&event, 20);
+			else
+				events = SDL_WaitEvent(&event);
 		}
 		if (!events)
 		{

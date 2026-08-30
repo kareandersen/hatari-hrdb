@@ -19,6 +19,7 @@ const char SDLGui_fileid[] = "Hatari sdlgui.c";
 #include "sdlgui.h"
 #include "str.h"
 #include "log.h"
+#include "vnc.h"
 
 #include "font5x8.h"
 #include "font10x16.h"
@@ -664,8 +665,15 @@ static void SDLGui_EditField(SGOBJ *dlg, int objnum)
 		/* Look for events */
 		if (SDL_PollEvent(&event) == 0)
 		{
-			/* No event: Wait some time for cursor blinking */
-			SDL_Delay(250);
+			/* No event: wait some time for cursor blinking,
+			 * keeping VNC clients served meanwhile */
+			int i;
+			for (i = 0; i < 12 && SDL_PollEvent(NULL) == 0; i++)
+			{
+				SDL_Delay(20);
+				Vnc_Update();
+				Vnc_RecordFrame();
+			}
 			blinkState ^= 1;
 		}
 		else
@@ -1287,10 +1295,20 @@ int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event 
 
 	Dprintf(("ENTER - obj: %d, old: %d, ret: %d\n", obj, oldbutton, retbutton));
 
+	/* Route VNC input onto the SDL event queue while the dialog runs */
+	Vnc_SetGuiMode(true);
+
 	/* The main loop */
 	while (retbutton == SDLGUI_NOTFOUND && !bQuitProgram)
 	{
-		if (SDL_WaitEvent(&sdlEvent) == 1)  /* Wait for events */
+		/* Waiting with a timeout keeps VNC clients served (events
+		 * pumped, dialog screen exported) while the dialog is open */
+		if (SDL_WaitEventTimeout(&sdlEvent, 20) != 1)
+		{
+			Vnc_Update();
+			Vnc_RecordFrame();
+			continue;
+		}
 		{
 			switch (sdlEvent.type)
 			{
@@ -1534,6 +1552,9 @@ int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event 
 
 	if (joy)
 		SDL_JoystickClose(joy);
+
+	Vnc_SetGuiMode(false);
+	Vnc_RecordFrame();
 
 	Dprintf(("EXIT - ret: %d\n", retbutton));
 	return retbutton;
