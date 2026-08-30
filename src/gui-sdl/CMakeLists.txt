@@ -8,7 +8,7 @@ endif()
 add_library(GuiSdl
 	dlgAbout.c dlgAlert.c dlgCpu.c dlgDevice.c dlgFileSelect.c dlgFloppy.c
 	dlgHalt.c dlgHardDisk.c dlgJoystick.c dlgKeyboard.c dlgMain.c
-	dlgMemory.c dlgNewDisk.c dlgRom.c dlgScreen.c dlgSound.c dlgSystem.c
+	dlgMemory.c dlgNewDisk.c dlgRom.c dlgScreen.c dlgSound.c dlgStatusOverlay.c dlgSystem.c
 	sdlgui.c
 	)
 

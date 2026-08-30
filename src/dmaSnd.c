@@ -325,6 +325,20 @@ uint8_t	DmaSnd_Get_XSINT_Line ( void )
 
 /*-----------------------------------------------------------------------*/
 /**
+ * Report DMA sound activity for the status overlay: whether a frame
+ * is playing (or the FIFO still draining) and the latest left/right
+ * sample values read from the FIFO.
+ */
+void DmaSnd_GetActivity(bool *pbPlaying, int16_t *pLeft, int16_t *pRight)
+{
+	*pbPlaying = (nDmaSoundControl & DMASNDCTRL_PLAY) || dma.FIFO_NbBytes > 0;
+	*pLeft = dma.FrameLeft;
+	*pRight = dma.FrameRight;
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
  * This function is called on every HBL to ensure the DMA Audio's FIFO
  * is kept full.
  * In Hatari, the FIFO is handled like a ring buffer (to avoid memcopying bytes

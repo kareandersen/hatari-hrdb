@@ -27,7 +27,7 @@ const char DlgMain_fileid[] = "Hatari dlgMain.c";
 #define MAINDLG_KEYBD    11
 #define MAINDLG_DEVICES  12
 #define MAINDLG_SOUND    13
-#define MAINDLG_ABOUT    14
+#define MAINDLG_OVERLAY  14
 #define MAINDLG_LOADCFG  15
 #define MAINDLG_SAVECFG  16
 #define MAINDLG_NORESET  17
@@ -35,12 +35,13 @@ const char DlgMain_fileid[] = "Hatari dlgMain.c";
 #define MAINDLG_OK       19
 #define MAINDLG_QUIT     20
 #define MAINDLG_CANCEL   21
+#define MAINDLG_ABOUT    22
 
 
 /* The main dialog: */
 static SGOBJ maindlg[] =
 {
-	{ SGBOX, 0, 0, 0,0, 50,19, NULL },
+	{ SGBOX, 0, 0, 0,0, 50,21, NULL },
 	{ SGTEXT, 0, 0, 17,1, 16,1, "Hatari main menu" },
 	{ SGBUTTON, 0, 0,  2, 4, 13,1, "S_ystem" },
 	{ SGBUTTON, 0, 0,  2, 6, 13,1, "CP_U" },
@@ -54,14 +55,15 @@ static SGOBJ maindlg[] =
 	{ SGBUTTON, 0, 0, 35, 6, 13,1, "_Keyboard" },
 	{ SGBUTTON, 0, 0, 35, 8, 13,1, "D_evices" },
 	{ SGBUTTON, 0, 0, 35,10, 13,1, "S_ound" },
-	{ SGBUTTON, 0, 0,  2,13, 13,1, "A_bout" },
+	{ SGBUTTON, 0, 0,  2,13, 13,1, "O_verlay" },
 	{ SGBUTTON, 0, 0, 17,13, 16,1, "_Load config" },
 	{ SGBUTTON, 0, 0, 35,13, 13,1, "_Save config" },
-	{ SGRADIOBUT, 0, 0, 3,15, 10,1, "_No Reset" },
-	{ SGRADIOBUT, 0, 0, 3,17, 15,1, "Reset ma_chine" },
-	{ SGBUTTON, SG_DEFAULT, 0, 21,15, 8,3, "OK" },
-	{ SGBUTTON, 0, 0, 36,15, 10,1, "_Quit" },
-	{ SGBUTTON, SG_CANCEL, 0, 36,17, 10,1, "Cancel" },
+	{ SGRADIOBUT, 0, 0, 3,17, 10,1, "_No Reset" },
+	{ SGRADIOBUT, 0, 0, 3,19, 15,1, "Reset ma_chine" },
+	{ SGBUTTON, SG_DEFAULT, 0, 21,17, 8,3, "OK" },
+	{ SGBUTTON, 0, 0, 36,17, 10,1, "_Quit" },
+	{ SGBUTTON, SG_CANCEL, 0, 36,19, 10,1, "Cancel" },
+	{ SGBUTTON, 0, 0, 36,15, 10,1, "A_bout" },
 	{ SGSTOP, 0, 0, 0,0, 0,0, NULL }
 };
 
@@ -97,6 +99,9 @@ int Dialog_MainDlg(bool *bReset, bool *bLoadedSnapshot)
 		{
 		 case MAINDLG_ABOUT:
 			Dialog_AboutDlg();
+			break;
+		 case MAINDLG_OVERLAY:
+			Dialog_StatusOverlayDlg();
 			break;
 		 case MAINDLG_CPU:
 			DlgCpu_Main();

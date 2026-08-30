@@ -1803,6 +1803,25 @@ void Sound_Update(uint64_t CPU_Clock)
 
 /*-----------------------------------------------------------------------*/
 /**
+ * Return the current 5 bit output level of each YM voice, for the
+ * status overlay meters: the fixed volume, or the current envelope
+ * volume for voices whose amplitude register selects the envelope.
+ * A silent voice (volume 0) reads as 0; digidrum-style voices with
+ * tone and noise masked off still show their (rapidly written) volume.
+ */
+void Sound_GetYmChannelLevels(uint8_t Levels[3])
+{
+	ymu16 vol = ( YmEnvWaves[ Env_shape ][ Env_pos ] & EnvMask3Voices ) | Vol3Voices;
+
+	Levels[0] = vol & 0x1f;
+	Levels[1] = (vol >> 5) & 0x1f;
+	Levels[2] = (vol >> 10) & 0x1f;
+}
+
+
+/*-----------------------------------------------------------------------*/
+/*-----------------------------------------------------------------------*/
+/**
  * On the end of each VBL, complete audio buffer up to the current value of CyclesGlobalClockCounter
  * As Sound_Update() could be called several times during the VBL, the audio
  * buffer might be already partially filled.

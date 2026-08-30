@@ -13,6 +13,7 @@
 #define DMASNDMODE_MONO         0x80
 
 extern uint16_t nDmaSoundControl;
+extern void DmaSnd_GetActivity(bool *pbPlaying, int16_t *pLeft, int16_t *pRight);
 
 extern void DmaSnd_Reset(bool bCold);
 extern void DmaSnd_MemorySnapShot_Capture(bool bSave);

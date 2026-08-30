@@ -24,6 +24,32 @@ const char SDLGui_fileid[] = "Hatari sdlgui.c";
 #include "font5x8.h"
 #include "font10x16.h"
 
+/* Small queue for characters typed through VNC while an edit field is
+ * active; SDL_TEXTINPUT cannot be synthesized via SDL_PushEvent with
+ * sdl2-compat, so remote text arrives through here instead. */
+static char guiTextQueue[32];
+static int guiTextHead, guiTextTail;
+
+void SDLGui_InjectText(char c)
+{
+	int next = (guiTextHead + 1) % (int)sizeof(guiTextQueue);
+	if (next != guiTextTail)
+	{
+		guiTextQueue[guiTextHead] = c;
+		guiTextHead = next;
+	}
+}
+
+static int SDLGui_PopInjectedText(void)
+{
+	int c;
+	if (guiTextTail == guiTextHead)
+		return -1;
+	c = (unsigned char)guiTextQueue[guiTextTail];
+	guiTextTail = (guiTextTail + 1) % (int)sizeof(guiTextQueue);
+	return c;
+}
+
 #define DEBUG_INFO 0
 #if DEBUG_INFO
 # define Dprintf(a) printf a
@@ -665,9 +691,21 @@ static void SDLGui_EditField(SGOBJ *dlg, int objnum)
 		/* Look for events */
 		if (SDL_PollEvent(&event) == 0)
 		{
+			int c, i;
+
+			/* characters typed through VNC */
+			while ((c = SDLGui_PopInjectedText()) >= 0)
+			{
+				if (strlen(txt) < (size_t)dlg[objnum].w)
+				{
+					memmove(&txt[cursorPos+1], &txt[cursorPos],
+					        strlen(&txt[cursorPos])+1);
+					txt[cursorPos] = (char)c;
+					cursorPos += 1;
+				}
+			}
 			/* No event: wait some time for cursor blinking,
 			 * keeping VNC clients served meanwhile */
-			int i;
 			for (i = 0; i < 12 && SDL_PollEvent(NULL) == 0; i++)
 			{
 				SDL_Delay(20);

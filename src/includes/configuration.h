@@ -139,6 +139,7 @@ typedef enum {
   SHORTCUT_JOY_1,
   SHORTCUT_PAD_A,
   SHORTCUT_PAD_B,
+  SHORTCUT_STATUSOVERLAY,
   SHORTCUT_KEYS,  /* number of shortcuts */
   SHORTCUT_NONE
 } SHORTCUTKEYIDX;
@@ -308,6 +309,15 @@ typedef struct
   bool bAspectCorrect;
   bool bShowStatusbar;
   bool bShowDriveLed;
+  bool bShowStatusOverlay;
+  bool bOverlayDriveLeds;
+  bool bOverlayFdc;
+  bool bOverlayJoysticks;
+  bool bOverlayFrameSkips;
+  bool bOverlayRec;
+  bool bOverlayMessages;
+  bool bOverlayYm;
+  bool bOverlayDma;
   bool bMouseWarp;
   bool bCrop;
   bool bForceMax;

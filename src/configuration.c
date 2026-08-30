@@ -93,6 +93,15 @@ static const struct Config_Tag configs_Screen[] =
 	{ "bMouseWarp", Bool_Tag, &ConfigureParams.Screen.bMouseWarp },
 	{ "bShowStatusbar", Bool_Tag, &ConfigureParams.Screen.bShowStatusbar },
 	{ "bShowDriveLed", Bool_Tag, &ConfigureParams.Screen.bShowDriveLed },
+	{ "bShowStatusOverlay", Bool_Tag, &ConfigureParams.Screen.bShowStatusOverlay },
+	{ "bOverlayDriveLeds", Bool_Tag, &ConfigureParams.Screen.bOverlayDriveLeds },
+	{ "bOverlayFdc", Bool_Tag, &ConfigureParams.Screen.bOverlayFdc },
+	{ "bOverlayJoysticks", Bool_Tag, &ConfigureParams.Screen.bOverlayJoysticks },
+	{ "bOverlayFrameSkips", Bool_Tag, &ConfigureParams.Screen.bOverlayFrameSkips },
+	{ "bOverlayRec", Bool_Tag, &ConfigureParams.Screen.bOverlayRec },
+	{ "bOverlayMessages", Bool_Tag, &ConfigureParams.Screen.bOverlayMessages },
+	{ "bOverlayYm", Bool_Tag, &ConfigureParams.Screen.bOverlayYm },
+	{ "bOverlayDma", Bool_Tag, &ConfigureParams.Screen.bOverlayDma },
 	{ "bCrop", Bool_Tag, &ConfigureParams.Screen.bCrop },
 	{ "bForceMax", Bool_Tag, &ConfigureParams.Screen.bForceMax },
 	{ "nMaxWidth", Int_Tag, &ConfigureParams.Screen.nMaxWidth },
@@ -292,6 +301,7 @@ static const struct Config_Tag configs_ShortCutWithMod[] =
 	{ "kSwitchJoy1", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_JOY_1] },
 	{ "kSwitchPadA", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_PAD_A] },
 	{ "kSwitchPadB", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_PAD_B] },
+	{ "kStatusOverlay", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_STATUSOVERLAY] },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -321,6 +331,7 @@ static const struct Config_Tag configs_ShortCutWithoutMod[] =
 	{ "kSwitchJoy1", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_JOY_1] },
 	{ "kSwitchPadA", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_PAD_A] },
 	{ "kSwitchPadB", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_PAD_B] },
+	{ "kStatusOverlay", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_STATUSOVERLAY] },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -755,6 +766,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_LOADMEM] = SDLK_l;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_SAVEMEM] = SDLK_k;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_INSERTDISKA] = SDLK_d;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_STATUSOVERLAY] = SDLK_h;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_JOY_0] = SDLK_F1;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_JOY_1] = SDLK_F2;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_PAD_A] = SDLK_F3;
@@ -815,6 +827,15 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Screen.bMouseWarp = true;
 	ConfigureParams.Screen.bShowStatusbar = true;
 	ConfigureParams.Screen.bShowDriveLed = true;
+	ConfigureParams.Screen.bShowStatusOverlay = false;
+	ConfigureParams.Screen.bOverlayDriveLeds = false;
+	ConfigureParams.Screen.bOverlayFdc = false;
+	ConfigureParams.Screen.bOverlayJoysticks = false;
+	ConfigureParams.Screen.bOverlayFrameSkips = false;
+	ConfigureParams.Screen.bOverlayRec = true;
+	ConfigureParams.Screen.bOverlayMessages = true;
+	ConfigureParams.Screen.bOverlayYm = true;
+	ConfigureParams.Screen.bOverlayDma = true;
 	ConfigureParams.Screen.bCrop = false;
 	/* use approximately similar Hatari framebuffer/window size
 	 * on all resolutions (like real Atari monitor would do) by

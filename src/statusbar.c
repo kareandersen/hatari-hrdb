@@ -35,6 +35,7 @@
 const char Statusbar_fileid[] = "Hatari statusbar.c";
 
 #include <assert.h>
+#include <stdlib.h>
 #include "main.h"
 #include "configuration.h"
 #include "screenSnapShot.h"
@@ -52,6 +53,8 @@ const char Statusbar_fileid[] = "Hatari statusbar.c";
 #include "blitter.h"
 #include "str.h"
 #include "lilo.h"
+#include "sound.h"
+#include "dmaSnd.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -93,6 +96,19 @@ static enum {
 	OVERLAY_DRAWN,
 	OVERLAY_RESTORED
 } nOverlayState;
+
+#define PANEL_METER_W 6
+
+/* Configurable status overlay panel: a strip drawn over the bottom of
+ * the emulation area (no surface resize), item set chosen in the GUI,
+ * toggled with the StatusOverlay shortcut. */
+static SDL_Rect PanelRect;		/* the full strip (backup/restore unit) */
+static SDL_Surface *PanelUnderside;	/* screen contents under the strip */
+static bool bPanelDrawn;		/* strip currently painted into surf */
+static int PanelFontW, PanelFontH;
+static uint8_t PanelYmShown[3];		/* decaying meter levels, 0-31 */
+static int PanelDmaShownL, PanelDmaShownR;
+static Uint32 PanelBg, PanelMeter, PanelMeterFrame, PanelLedOn, PanelLedOff;
 
 static SDL_Rect RecLedRect;
 static bool bOldRecording;
@@ -260,6 +276,245 @@ static void Statusbar_JoysticksGetText ( char *buf )
 
 /*-----------------------------------------------------------------------*/
 /**
+ * (Re-)compute the status overlay panel geometry and colors for the
+ * given surface, dropping an incompatible backup surface.
+ */
+static void Statusbar_PanelInit(SDL_Surface *surf)
+{
+	SDLGui_GetFontSize(&PanelFontW, &PanelFontH);
+	PanelRect.x = 0;
+	PanelRect.w = surf->w;
+	PanelRect.h = PanelFontH + 4;
+	PanelRect.y = surf->h - StatusbarHeight - PanelRect.h;
+	if (PanelRect.y < 0)
+		PanelRect.y = 0;
+
+	PanelBg         = SDL_MapRGB(surf->format, 12, 12, 12);
+	PanelMeter      = SDL_MapRGB(surf->format, 80, 220, 80);
+	PanelMeterFrame = SDL_MapRGB(surf->format, 56, 56, 56);
+	PanelLedOn      = SDL_MapRGB(surf->format, 0, 190, 0);
+	PanelLedOff     = SDL_MapRGB(surf->format, 48, 48, 48);
+
+	if (PanelUnderside && (
+	    PanelUnderside->w != PanelRect.w ||
+	    PanelUnderside->h != PanelRect.h ||
+	    PanelUnderside->format->BitsPerPixel != surf->format->BitsPerPixel))
+	{
+		SDL_FreeSurface(PanelUnderside);
+		PanelUnderside = NULL;
+	}
+	bPanelDrawn = false;
+}
+
+/**
+ * Forget the panel's backup state, e.g. after toggling it or before a
+ * full screen repaint; the caller triggers the repaint itself.
+ */
+void Statusbar_PanelReset(void)
+{
+	bPanelDrawn = false;
+}
+
+/**
+ * Restore the screen contents under the panel strip (before the next
+ * frame conversion, so partial updates find unmodified pixels).
+ */
+static void Statusbar_PanelRestore(SDL_Surface *surf)
+{
+	if (bPanelDrawn && PanelUnderside)
+	{
+		SDL_BlitSurface(PanelUnderside, NULL, surf, &PanelRect);
+		bPanelDrawn = false;
+	}
+}
+
+/**
+ * Draw one small vertical meter bar, level 0-31.
+ */
+static void Statusbar_PanelMeter(SDL_Surface *surf, int x, int y, int h, int level)
+{
+	SDL_Rect r;
+	int fill = (level * (h - 2) + 30) / 31;
+
+	r.x = x; r.y = y; r.w = PANEL_METER_W; r.h = h;
+	SDL_FillRect(surf, &r, PanelMeterFrame);
+	if (fill > 0)
+	{
+		r.x = x + 1;
+		r.w = PANEL_METER_W - 2;
+		r.y = y + (h - 1 - fill);
+		r.h = fill;
+		SDL_FillRect(surf, &r, PanelMeter);
+	}
+}
+
+/**
+ * Draw a small LED box; returns width used.
+ */
+static int Statusbar_PanelLed(SDL_Surface *surf, int x, int y, bool bOn)
+{
+	SDL_Rect r;
+	r.x = x; r.y = y + 1; r.w = PanelFontW; r.h = PanelFontH - 2;
+	SDL_FillRect(surf, &r, bOn ? PanelLedOn : PanelLedOff);
+	return r.w;
+}
+
+/**
+ * Merge the panel rect with another update rect (or return the panel
+ * rect alone). Uses a static, like the other statusbar rects.
+ */
+static SDL_Rect* Statusbar_PanelMergeRect(SDL_Rect *other)
+{
+	static SDL_Rect merged;
+	int x2, y2;
+
+	if (!other)
+		return &PanelRect;
+	merged.x = other->x < PanelRect.x ? other->x : PanelRect.x;
+	merged.y = other->y < PanelRect.y ? other->y : PanelRect.y;
+	x2 = other->x + other->w > PanelRect.x + PanelRect.w ?
+	     other->x + other->w : PanelRect.x + PanelRect.w;
+	y2 = other->y + other->h > PanelRect.y + PanelRect.h ?
+	     other->y + other->h : PanelRect.y + PanelRect.h;
+	merged.w = x2 - merged.x;
+	merged.h = y2 - merged.y;
+	return &merged;
+}
+
+/**
+ * Backup the pixels under the strip and draw the enabled panel items.
+ * Called once per frame from Statusbar_Update(); returns the panel
+ * rect when drawn, NULL when the panel is disabled.
+ */
+static SDL_Rect* Statusbar_PanelDraw(SDL_Surface *surf)
+{
+	char buf[MAX_MESSAGE_LEN+1];
+	int xoff, ytext, ymeter, meterh, i;
+	SDL_Rect bgr;
+
+	if (!ConfigureParams.Screen.bShowStatusOverlay)
+		return NULL;
+
+	/* genconv path has no separate restore hook: restore here */
+	Statusbar_PanelRestore(surf);
+
+	if (!PanelUnderside)
+	{
+		SDL_PixelFormat *fmt = surf->format;
+		PanelUnderside = SDL_CreateRGBSurface(surf->flags,
+			PanelRect.w, PanelRect.h, fmt->BitsPerPixel,
+			fmt->Rmask, fmt->Gmask, fmt->Bmask, fmt->Amask);
+		if (!PanelUnderside)
+			return NULL;
+	}
+	SDL_BlitSurface(surf, &PanelRect, PanelUnderside, NULL);
+	bPanelDrawn = true;
+
+	xoff = PanelFontW / 2;
+	ytext = PanelRect.y + 2;
+	ymeter = PanelRect.y + 1;
+	meterh = PanelRect.h - 2;
+
+	/* background painted under the whole strip */
+	bgr = PanelRect;
+	SDL_FillRect(surf, &bgr, PanelBg);
+
+	if (ConfigureParams.Screen.bOverlayDriveLeds)
+	{
+		static const char *names[MAX_DRIVE_LEDS] = { "A", "B", "H" };
+		for (i = 0; i < MAX_DRIVE_LEDS; i++)
+		{
+			SDLGui_Text(xoff, ytext, names[i]);
+			xoff += PanelFontW + 1;
+			xoff += Statusbar_PanelLed(surf, xoff, ytext,
+					Led[i].state != LED_STATE_OFF) + PanelFontW;
+		}
+	}
+	if (ConfigureParams.Screen.bOverlayFdc)
+	{
+		FDC_Get_Statusbar_Text(buf, FDC_MSG_MAX_LEN);
+		SDLGui_Text(xoff, ytext, buf);
+		xoff += (strlen(buf) + 1) * PanelFontW;
+	}
+	if (ConfigureParams.Screen.bOverlayJoysticks)
+	{
+		char jbuf[JOYSTICK_COUNT+1];
+		Statusbar_JoysticksGetText(jbuf);
+		SDLGui_Text(xoff, ytext, jbuf);
+		xoff += (JOYSTICK_COUNT + 1) * PanelFontW;
+	}
+	if (ConfigureParams.Screen.bOverlayFrameSkips)
+	{
+		snprintf(buf, sizeof(buf), "FS:%d%s", nFrameSkips,
+		         ConfigureParams.System.bFastForward ? " >>" : "");
+		SDLGui_Text(xoff, ytext, buf);
+		xoff += (strlen(buf) + 1) * PanelFontW;
+	}
+	if (ConfigureParams.Screen.bOverlayRec &&
+	    (bRecordingYM || bRecordingWav || Avi_AreWeRecording()))
+	{
+		SDLGui_Text(xoff, ytext, "REC");
+		xoff += 3 * PanelFontW + 1;
+		xoff += Statusbar_PanelLed(surf, xoff, ytext, true) + PanelFontW;
+	}
+	if (ConfigureParams.Screen.bOverlayYm)
+	{
+		uint8_t levels[3];
+		Sound_GetYmChannelLevels(levels);
+		SDLGui_Text(xoff, ytext, "YM");
+		xoff += 2 * PanelFontW + 2;
+		for (i = 0; i < 3; i++)
+		{
+			if (levels[i] >= PanelYmShown[i])
+				PanelYmShown[i] = levels[i];
+			else if (PanelYmShown[i] >= 2)
+				PanelYmShown[i] -= 2;
+			else
+				PanelYmShown[i] = 0;
+			Statusbar_PanelMeter(surf, xoff, ymeter, meterh, PanelYmShown[i]);
+			xoff += PANEL_METER_W + 2;
+		}
+		xoff += PanelFontW;
+	}
+	if (ConfigureParams.Screen.bOverlayDma &&
+	    (Config_IsMachineSTE() || Config_IsMachineTT()))
+	{
+		bool playing;
+		int16_t left, right, lvl;
+		DmaSnd_GetActivity(&playing, &left, &right);
+		SDLGui_Text(xoff, ytext, "DMA");
+		xoff += 3 * PanelFontW + 2;
+
+		lvl = playing ? (abs(left) * 31) / 32768 : 0;
+		if (lvl >= PanelDmaShownL) PanelDmaShownL = lvl;
+		else if (PanelDmaShownL >= 2) PanelDmaShownL -= 2;
+		else PanelDmaShownL = 0;
+		Statusbar_PanelMeter(surf, xoff, ymeter, meterh, PanelDmaShownL);
+		xoff += PANEL_METER_W + 2;
+
+		lvl = playing ? (abs(right) * 31) / 32768 : 0;
+		if (lvl >= PanelDmaShownR) PanelDmaShownR = lvl;
+		else if (PanelDmaShownR >= 2) PanelDmaShownR -= 2;
+		else PanelDmaShownR = 0;
+		Statusbar_PanelMeter(surf, xoff, ymeter, meterh, PanelDmaShownR);
+		xoff += PANEL_METER_W + 2 + PanelFontW;
+	}
+	if (ConfigureParams.Screen.bOverlayMessages && MessageList->msg[0])
+	{
+		int room = (PanelRect.w - xoff) / PanelFontW - 1;
+		if (room > 0)
+		{
+			if (room + 1 > (int)sizeof(buf))
+				room = sizeof(buf) - 1;
+			Str_Copy(buf, MessageList->msg, room + 1);
+			SDLGui_Text(xoff, ytext, buf);
+		}
+	}
+	return &PanelRect;
+}
+
+/*-----------------------------------------------------------------------*/
+/**
  * Set overlay led size/pos on given screen to internal Rect
  * and free previous resources.
  */
@@ -329,6 +584,11 @@ void Statusbar_Init(SDL_Surface *surf)
 	}
 	if (!StatusbarHeight)
 	{
+		/* no statusbar, but the overlay panel still needs fonts
+		 * and its geometry for this surface */
+		SDLGui_Init();
+		SDLGui_SetScreen(surf);
+		Statusbar_PanelInit(surf);
 		DEBUGPRINT(("Doesn't fit <- Statusbar_Init()\n"));
 		return;
 	}
@@ -350,6 +610,8 @@ void Statusbar_Init(SDL_Surface *surf)
 	{
 		assert(STATUSBAR_LINES*lineh <= StatusbarHeight);
 	}
+
+	Statusbar_PanelInit(surf);
 
 	/* draw statusbar background gray so that text shows */
 	FullRect.x = 0;
@@ -784,10 +1046,12 @@ void Statusbar_OverlayBackup(SDL_Surface *surf)
  */
 void Statusbar_OverlayRestore(SDL_Surface *surf)
 {
+	if (surf)
+		Statusbar_PanelRestore(surf);
 	if ((StatusbarHeight && ConfigureParams.Screen.bShowStatusbar)
 	    || !ConfigureParams.Screen.bShowDriveLed)
 	{
-		/* overlay not used with statusbar */
+		/* overlay led not used with statusbar */
 		return;
 	}
 	if (nOverlayState == OVERLAY_DRAWN && OverlayUnderside)
@@ -900,13 +1164,13 @@ SDL_Rect* Statusbar_Update(SDL_Surface *surf, bool do_update)
 		last_rect = NULL;
 		/* not enabled (anymore), show overlay led instead? */
 		if (ConfigureParams.Screen.bShowDriveLed)
-		{
 			last_rect = Statusbar_OverlayDraw(surf);
-			if (do_update && last_rect)
-			{
-				Screen_UpdateRects(surf, 1, last_rect);
-				last_rect = NULL;
-			}
+		if (Statusbar_PanelDraw(surf))
+			last_rect = Statusbar_PanelMergeRect(last_rect);
+		if (do_update && last_rect)
+		{
+			Screen_UpdateRects(surf, 1, last_rect);
+			last_rect = NULL;
 		}
 		return last_rect;
 	}
@@ -1041,6 +1305,8 @@ SDL_Rect* Statusbar_Update(SDL_Surface *surf, bool do_update)
 		/* multiple items updated -> update whole statusbar */
 		last_rect = &FullRect;
 	}
+	if (Statusbar_PanelDraw(surf))
+		last_rect = Statusbar_PanelMergeRect(last_rect);
 	if (do_update && last_rect)
 	{
 		Screen_UpdateRects(surf, 1, last_rect);

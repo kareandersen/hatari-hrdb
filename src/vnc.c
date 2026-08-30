@@ -24,6 +24,7 @@ const char Vnc_fileid[] = "Hatari vnc.c";
 #include "keymap.h"
 #include "log.h"
 #include "screen.h"
+#include "sdlgui.h"
 #include "video.h"
 #include "vnc.h"
 
@@ -182,14 +183,11 @@ static void Vnc_KbdEvent(rfbBool down, rfbKeySym key, rfbClientPtr cl)
 		ev.key.keysym = sym;
 		SDL_PushEvent(&ev);
 
-		/* edit fields take typed characters from SDL_TEXTINPUT */
+		/* typed characters for the edit fields: pushing
+		 * SDL_TEXTINPUT crashes sdl2-compat (SDL3 text events
+		 * carry a pointer), so hand them to the GUI directly */
 		if (down && key >= 0x20 && key <= 0x7e)
-		{
-			memset(&ev, 0, sizeof(ev));
-			ev.type = SDL_TEXTINPUT;
-			ev.text.text[0] = (char)key;
-			SDL_PushEvent(&ev);
-		}
+			SDLGui_InjectText((char)key);
 		return;
 	}
 

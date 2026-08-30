@@ -64,6 +64,18 @@ static void ShortCut_FullScreen(void)
 
 /*-----------------------------------------------------------------------*/
 /**
+ * Shortcut to toggle the configurable status overlay panel
+ */
+static void ShortCut_StatusOverlay(void)
+{
+	ConfigureParams.Screen.bShowStatusOverlay = !ConfigureParams.Screen.bShowStatusOverlay;
+	Statusbar_PanelReset();
+	/* repaint the whole frame so a hidden panel's pixels are rebuilt */
+	Screen_SetFullUpdate();
+}
+
+/*-----------------------------------------------------------------------*/
+/**
  * Shortcut to toggle borders
  */
 static void ShortCut_Borders(void)
@@ -290,6 +302,9 @@ void ShortCut_ActKey(void)
 	 case SHORTCUT_FULLSCREEN:
 		ShortCut_FullScreen();		/* Switch between fullscreen/windowed mode */
 		break;
+	 case SHORTCUT_STATUSOVERLAY:
+		ShortCut_StatusOverlay();
+		break;
 	 case SHORTCUT_BORDERS:
 		ShortCut_Borders();		/* Toggle Atari borders */
 		break;
@@ -387,6 +402,7 @@ bool Shortcut_Invoke(const char *shortcut)
 		{ SHORTCUT_RECSOUND, "recsound" },
 		{ SHORTCUT_SAVEMEM, "savemem" },
 		{ SHORTCUT_QUIT, "quit" },
+		{ SHORTCUT_STATUSOVERLAY, "statusoverlay" },
 		{ SHORTCUT_NONE, NULL }
 	};
 	int i;

@@ -70,6 +70,7 @@ extern void Sound_MemorySnapShot_Capture(bool bSave);
 extern void Sound_Stats_Show (void);
 extern void Sound_Update(uint64_t CPU_Clock);
 extern void Sound_Update_VBL(void);
+extern void Sound_GetYmChannelLevels(uint8_t Levels[3]);
 extern void Sound_WriteReg(int reg, uint8_t data);
 extern bool Sound_BeginRecording(char *pszCaptureFileName);
 extern void Sound_EndRecording(void);
