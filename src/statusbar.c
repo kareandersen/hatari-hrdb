@@ -396,13 +396,18 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 			int16_t left, right, lvl;
 			DmaSnd_GetActivity(&playing, &left, &right);
 
-			lvl = playing ? (abs(left) * 31) / 32768 : 0;
+			/* FrameLeft/Right hold 8 bit STE samples (-128..127) */
+			lvl = playing ? (abs(left) * 31) / 127 : 0;
+			if (lvl > 31)
+				lvl = 31;
 			if (lvl >= PanelDmaShownL) PanelDmaShownL = lvl;
 			else if (PanelDmaShownL >= 2) PanelDmaShownL -= 2;
 			else PanelDmaShownL = 0;
 			Statusbar_PanelMeter(surf, xoff, ymeter, meterh, PanelDmaShownL);
 
-			lvl = playing ? (abs(right) * 31) / 32768 : 0;
+			lvl = playing ? (abs(right) * 31) / 127 : 0;
+			if (lvl > 31)
+				lvl = 31;
 			if (lvl >= PanelDmaShownR) PanelDmaShownR = lvl;
 			else if (PanelDmaShownR >= 2) PanelDmaShownR -= 2;
 			else PanelDmaShownR = 0;
