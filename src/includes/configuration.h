@@ -307,8 +307,6 @@ typedef struct
   bool bFullScreen;
   bool bAllowOverscan;
   bool bAspectCorrect;
-  bool bShowStatusbar;
-  bool bShowDriveLed;
   bool bShowStatusOverlay;
   bool bOverlayDriveLeds;
   bool bOverlayFdc;

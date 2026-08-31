@@ -140,9 +140,9 @@ static SGOBJ windowdlg[] =
 	{ SGTEXT,     0, 0,  4,2, 20,1, "Hatari screen options" },
 	{ SGCHECKBOX, 0, 0,  4,4, 12,1, "_Fullscreen" },
 	{ SGTEXT,     0, 0,  4,6, 12,1, "Indicators:" },
-	{ SGRADIOBUT, 0, 0,  6,7, 11,1, "Status_bar" },
-	{ SGRADIOBUT, 0, 0,  6,8, 11,1, "Drive _led" },
-	{ SGRADIOBUT, 0, 0,  6,9,  6,1, "_None" },
+	{ SGCHECKBOX, 0, 0,  6,7, 16,1, "Status over_lay" },
+	{ SGTEXT,     0, 0,  6,8,  1,1, "" },
+	{ SGTEXT,     0, 0,  6,9,  1,1, "" },
 	{ SGTEXT,     0, 0, 19,4, 12,1, "Frame skip:" },
 	{ SGRADIOBUT, 0, 0, 21,5,  5,1, "_Off" },
 	{ SGRADIOBUT, 0, 0, 21,6,  3,1, "_1" },
@@ -381,15 +381,10 @@ void Dialog_WindowDlg(void)
 	else
 		windowdlg[DLGSCRN_KEEP_RES].state &= ~SG_SELECTED;
 
-	windowdlg[DLGSCRN_STATUSBAR].state &= ~SG_SELECTED;
-	windowdlg[DLGSCRN_DRIVELED].state &= ~SG_SELECTED;
-	windowdlg[DLGSCRN_NONE].state &= ~SG_SELECTED;
-	if (ConfigureParams.Screen.bShowStatusbar)
+	if (ConfigureParams.Screen.bShowStatusOverlay)
 		windowdlg[DLGSCRN_STATUSBAR].state |= SG_SELECTED;
-	else if (ConfigureParams.Screen.bShowDriveLed)
-		windowdlg[DLGSCRN_DRIVELED].state |= SG_SELECTED;
 	else
-		windowdlg[DLGSCRN_NONE].state |= SG_SELECTED;
+		windowdlg[DLGSCRN_STATUSBAR].state &= ~SG_SELECTED;
 
 	for (i = 0; i < ARRAY_SIZE(skip_frames); i++)
 	{
@@ -533,12 +528,8 @@ void Dialog_WindowDlg(void)
 	ConfigureParams.Screen.nMaxWidth = maxw;
 	ConfigureParams.Screen.nMaxHeight = maxh;
 
-	ConfigureParams.Screen.bShowStatusbar = false;
-	ConfigureParams.Screen.bShowDriveLed = false;
-	if (windowdlg[DLGSCRN_STATUSBAR].state & SG_SELECTED)
-		ConfigureParams.Screen.bShowStatusbar = true;
-	else if (windowdlg[DLGSCRN_DRIVELED].state & SG_SELECTED)
-		ConfigureParams.Screen.bShowDriveLed = true;
+	ConfigureParams.Screen.bShowStatusOverlay =
+		(windowdlg[DLGSCRN_STATUSBAR].state & SG_SELECTED) != 0;
 
 	for (i = DLGSCRN_SKIP0; i <= DLGSCRN_SKIP3; i++)
 	{

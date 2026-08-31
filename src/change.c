@@ -211,7 +211,6 @@ void Change_CopyChangedParamsToConfiguration(CNF_PARAMS *current, CNF_PARAMS *ch
 	     || changed->Screen.nMaxWidth != current->Screen.nMaxWidth
 	     || changed->Screen.nMaxHeight != current->Screen.nMaxHeight
 	     || changed->Screen.bAllowOverscan != current->Screen.bAllowOverscan
-	     || changed->Screen.bShowStatusbar != current->Screen.bShowStatusbar
 	     || changed->Screen.bUseSdlRenderer != current->Screen.bUseSdlRenderer
 	     || changed->Screen.bResizable != current->Screen.bResizable
 	     || changed->Screen.bUseVsync != current->Screen.bUseVsync

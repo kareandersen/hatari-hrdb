@@ -287,7 +287,7 @@ static const opt_t HatariOptions[] = {
 	{ OPT_STATUSBAR, NULL, "--statusbar",
 	  "<bool>", "Show statusbar (floppy leds etc)" },
 	{ OPT_DRIVE_LED,   NULL, "--drive-led",
-	  "<bool>", "Show overlay drive led when statusbar isn't shown" },
+	  "<bool>", "Show drive leds in the status overlay" },
 	{ OPT_MAXWIDTH, NULL, "--max-width",
 	  "<x>", "Maximum Hatari screen width before scaling" },
 	{ OPT_MAXHEIGHT, NULL, "--max-height",
@@ -1268,11 +1268,11 @@ bool Opt_ParseParameters(int argc, const char * const argv[])
 			break;
 
 		case OPT_STATUSBAR:
-			ok = Opt_Bool(argv[++i], OPT_STATUSBAR, &ConfigureParams.Screen.bShowStatusbar);
+			ok = Opt_Bool(argv[++i], OPT_STATUSBAR, &ConfigureParams.Screen.bShowStatusOverlay);
 			break;
 
 		case OPT_DRIVE_LED:
-			ok = Opt_Bool(argv[++i], OPT_DRIVE_LED, &ConfigureParams.Screen.bShowDriveLed);
+			ok = Opt_Bool(argv[++i], OPT_DRIVE_LED, &ConfigureParams.Screen.bOverlayDriveLeds);
 			break;
 
 		case OPT_DISABLE_VIDEO:
