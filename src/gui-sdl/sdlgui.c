@@ -380,6 +380,23 @@ void SDLGui_Text(int x, int y, const char *txt)
 
 /*-----------------------------------------------------------------------*/
 /**
+ * Draw a text string with a black drop shadow, for text drawn on top of
+ * the emulation screen, where the background is whatever the Atari
+ * happens to show.
+ *
+ * Both fonts are white, one color keyed and one with an alpha channel,
+ * so a color modulation gives a black copy of either.
+ */
+void SDLGui_TextShadow(int x, int y, const char *txt)
+{
+	SDL_SetSurfaceColorMod(pFontGfx, 0, 0, 0);
+	SDLGui_TextInt(x + 1, y + 1, txt, false);
+	SDL_SetSurfaceColorMod(pFontGfx, 255, 255, 255);
+	SDLGui_TextInt(x, y, txt, false);
+}
+
+/*-----------------------------------------------------------------------*/
+/**
  * Draw a dialog text object.
  */
 static void SDLGui_DrawText(const SGOBJ *tdlg, int objnum)

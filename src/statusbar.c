@@ -90,7 +90,7 @@ static bool bPanelDrawn;		/* strip currently painted into surf */
 static int PanelFontW, PanelFontH;
 static uint8_t PanelYmShown[3];		/* decaying meter levels, 0-31 */
 static int PanelDmaShownL, PanelDmaShownR;
-static Uint32 PanelBg, PanelMeter, PanelMeterFrame, PanelLedOn, PanelLedOff;
+static Uint32 PanelMeter, PanelMeterFrame, PanelLedOn, PanelLedOff;
 
 /* needs to be enough for all messages, but <= MessageRect width / font width */
 #define MAX_MESSAGE_LEN 63
@@ -221,7 +221,6 @@ static void Statusbar_PanelInit(SDL_Surface *surf)
 	if (PanelRect.y < 0)
 		PanelRect.y = 0;
 
-	PanelBg         = SDL_MapRGB(surf->format, 12, 12, 12);
 	PanelMeter      = SDL_MapRGB(surf->format, 158, 176, 158);
 	PanelMeterFrame = SDL_MapRGB(surf->format, 56, 56, 56);
 	PanelLedOn      = SDL_MapRGB(surf->format, 124, 168, 124);
@@ -316,7 +315,7 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 		{
 			if (bDraw)
 			{
-				SDLGui_Text(xoff, ytext, names[i]);
+				SDLGui_TextShadow(xoff, ytext, names[i]);
 				Statusbar_PanelLed(surf, xoff + PanelFontW + 1, ytext,
 				                   Led[i].state != LED_STATE_OFF);
 			}
@@ -327,7 +326,7 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 	{
 		FDC_Get_Statusbar_Text(buf, FDC_MSG_MAX_LEN);
 		if (bDraw)
-			SDLGui_Text(xoff, ytext, buf);
+			SDLGui_TextShadow(xoff, ytext, buf);
 		xoff += (strlen(buf) + 1) * PanelFontW;
 	}
 	if (ConfigureParams.Screen.bOverlayJoysticks)
@@ -335,7 +334,7 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 		char jbuf[JOYSTICK_COUNT+1];
 		Statusbar_JoysticksGetText(jbuf);
 		if (bDraw)
-			SDLGui_Text(xoff, ytext, jbuf);
+			SDLGui_TextShadow(xoff, ytext, jbuf);
 		xoff += (JOYSTICK_COUNT + 1) * PanelFontW;
 	}
 	if (ConfigureParams.Screen.bOverlayFrameSkips)
@@ -344,7 +343,7 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 		snprintf(buf, sizeof(buf), "FS:%-2d%s", nFrameSkips,
 		         ConfigureParams.System.bFastForward ? ">>" : "  ");
 		if (bDraw)
-			SDLGui_Text(xoff, ytext, buf);
+			SDLGui_TextShadow(xoff, ytext, buf);
 		xoff += 8 * PanelFontW;
 	}
 	if (ConfigureParams.Screen.bOverlayRec &&
@@ -352,7 +351,7 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 	{
 		if (bDraw)
 		{
-			SDLGui_Text(xoff, ytext, "REC");
+			SDLGui_TextShadow(xoff, ytext, "REC");
 			Statusbar_PanelLed(surf, xoff + 3*PanelFontW + 1, ytext, true);
 		}
 		xoff += 4*PanelFontW + 1 + PanelFontW;
@@ -363,7 +362,7 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 		{
 			uint8_t levels[3];
 			Sound_GetYmChannelLevels(levels);
-			SDLGui_Text(xoff, ytext, "YM");
+			SDLGui_TextShadow(xoff, ytext, "YM");
 		}
 		xoff += 2*PanelFontW + 2;
 		for (i = 0; i < 3; i++)
@@ -388,7 +387,7 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 	    (Config_IsMachineSTE() || Config_IsMachineTT()))
 	{
 		if (bDraw)
-			SDLGui_Text(xoff, ytext, "DMA");
+			SDLGui_TextShadow(xoff, ytext, "DMA");
 		xoff += 3*PanelFontW + 2;
 		if (bDraw)
 		{
@@ -423,7 +422,7 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 		if (bDraw)
 		{
 			Str_Copy(buf, MessageList->msg, len + 1);
-			SDLGui_Text(xoff, ytext, buf);
+			SDLGui_TextShadow(xoff, ytext, buf);
 		}
 		xoff += len * PanelFontW;
 	}
@@ -438,7 +437,6 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 static SDL_Rect* Statusbar_PanelDraw(SDL_Surface *surf)
 {
 	int width, xstart;
-	SDL_Rect bgr;
 
 	if (!ConfigureParams.Screen.bShowStatusOverlay)
 		return NULL;
@@ -463,15 +461,9 @@ static SDL_Rect* Statusbar_PanelDraw(SDL_Surface *surf)
 	if (xstart < PanelFontW / 2)
 		xstart = PanelFontW / 2;
 
-	/* background box just around the content */
-	bgr.x = xstart - PanelFontW / 2;
-	bgr.y = PanelRect.y;
-	bgr.w = width + PanelFontW;
-	bgr.h = PanelRect.h;
-	if (bgr.x + bgr.w > PanelRect.w)
-		bgr.w = PanelRect.w - bgr.x;
-	SDL_FillRect(surf, &bgr, PanelBg);
-
+	/* no background box: the items are drawn straight onto the
+	 * emulation screen, the text carrying its own drop shadow
+	 */
 	Statusbar_PanelWalk(surf, xstart, true);
 	return &PanelRect;
 }
