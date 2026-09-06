@@ -81,6 +81,14 @@ static struct {
 
 #define PANEL_METER_W 6
 
+/* Panel item colors, mapped against the surface being drawn into: that
+ * is the emulation frame buffer or the overlay's own surface, which do
+ * not have the same pixel format. */
+#define PANEL_RGB_METER		158, 176, 158
+#define PANEL_RGB_METER_FRAME	 56,  56,  56
+#define PANEL_RGB_LED_ON	124, 168, 124
+#define PANEL_RGB_LED_OFF	 48,  48,  48
+
 /* Configurable status overlay panel: a strip drawn over the bottom of
  * the emulation area (no surface resize), item set chosen in the GUI,
  * toggled with the StatusOverlay shortcut. */
@@ -90,7 +98,6 @@ static bool bPanelDrawn;		/* strip currently painted into surf */
 static int PanelFontW, PanelFontH;
 static uint8_t PanelYmShown[3];		/* decaying meter levels, 0-31 */
 static int PanelDmaShownL, PanelDmaShownR;
-static Uint32 PanelMeter, PanelMeterFrame, PanelLedOn, PanelLedOff;
 
 /* needs to be enough for all messages, but <= MessageRect width / font width */
 #define MAX_MESSAGE_LEN 63
@@ -208,8 +215,8 @@ static void Statusbar_JoysticksGetText ( char *buf )
 
 /*-----------------------------------------------------------------------*/
 /**
- * (Re-)compute the status overlay panel geometry and colors for the
- * given surface, dropping an incompatible backup surface.
+ * (Re-)compute the status overlay panel geometry for the given
+ * surface, dropping an incompatible backup surface.
  */
 static void Statusbar_PanelInit(SDL_Surface *surf)
 {
@@ -220,11 +227,6 @@ static void Statusbar_PanelInit(SDL_Surface *surf)
 	PanelRect.y = surf->h - StatusbarHeight - PanelRect.h;
 	if (PanelRect.y < 0)
 		PanelRect.y = 0;
-
-	PanelMeter      = SDL_MapRGB(surf->format, 158, 176, 158);
-	PanelMeterFrame = SDL_MapRGB(surf->format, 56, 56, 56);
-	PanelLedOn      = SDL_MapRGB(surf->format, 124, 168, 124);
-	PanelLedOff     = SDL_MapRGB(surf->format, 48, 48, 48);
 
 	if (PanelUnderside && (
 	    PanelUnderside->w != PanelRect.w ||
@@ -268,14 +270,14 @@ static void Statusbar_PanelMeter(SDL_Surface *surf, int x, int y, int h, int lev
 	int fill = (level * (h - 2) + 30) / 31;
 
 	r.x = x; r.y = y; r.w = PANEL_METER_W; r.h = h;
-	SDL_FillRect(surf, &r, PanelMeterFrame);
+	SDL_FillRect(surf, &r, SDL_MapRGB(surf->format, PANEL_RGB_METER_FRAME));
 	if (fill > 0)
 	{
 		r.x = x + 1;
 		r.w = PANEL_METER_W - 2;
 		r.y = y + (h - 1 - fill);
 		r.h = fill;
-		SDL_FillRect(surf, &r, PanelMeter);
+		SDL_FillRect(surf, &r, SDL_MapRGB(surf->format, PANEL_RGB_METER));
 	}
 }
 
@@ -286,7 +288,8 @@ static int Statusbar_PanelLed(SDL_Surface *surf, int x, int y, bool bOn)
 {
 	SDL_Rect r;
 	r.x = x; r.y = y + 1; r.w = PanelFontW; r.h = PanelFontH - 2;
-	SDL_FillRect(surf, &r, bOn ? PanelLedOn : PanelLedOff);
+	SDL_FillRect(surf, &r, bOn ? SDL_MapRGB(surf->format, PANEL_RGB_LED_ON)
+				   : SDL_MapRGB(surf->format, PANEL_RGB_LED_OFF));
 	return r.w;
 }
 
@@ -296,15 +299,15 @@ static int Statusbar_PanelLed(SDL_Surface *surf, int x, int y, bool bOn)
  */
 /**
  * Walk the enabled panel items left to right from x position xoff,
- * drawing them when bDraw is set; returns the x position after the
- * last item. Called twice per frame: once to measure the content
- * width for centering, once to draw.
+ * with the strip starting at ytop, drawing them when bDraw is set;
+ * returns the x position after the last item. Called twice per frame:
+ * once to measure the content width for centering, once to draw.
  */
-static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
+static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, int ytop, bool bDraw)
 {
 	char buf[MAX_MESSAGE_LEN+1];
-	int ytext = PanelRect.y + 2;
-	int ymeter = PanelRect.y + 1;
+	int ytext = ytop + 2;
+	int ymeter = ytop + 1;
 	int meterh = PanelRect.h - 2;
 	int i;
 
@@ -430,13 +433,20 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, bool bDraw)
 }
 
 /**
- * Backup the pixels under the strip and draw the enabled panel items,
- * centered. Called once per frame from Statusbar_Update(); returns
- * the panel rect when drawn, NULL when the panel is disabled.
+ * Draw the enabled panel items, centered. Called once per frame from
+ * Statusbar_Update(); returns the panel rect when drawn, NULL when the
+ * panel is disabled.
+ *
+ * The panel goes into the window's bottom padding when the screen is
+ * being scaled and Screen_GetOverlaySurface() hands out a surface for
+ * it. Otherwise it is drawn into the emulation frame buffer itself,
+ * over the bottom of the Atari screen, which needs the pixels below it
+ * saved so they can be put back before the next frame.
  */
 static SDL_Rect* Statusbar_PanelDraw(SDL_Surface *surf)
 {
-	int width, xstart;
+	SDL_Surface *overlay, *target, *prev;
+	int width, xstart, ytop;
 
 	if (!ConfigureParams.Screen.bShowStatusOverlay)
 		return NULL;
@@ -444,27 +454,45 @@ static SDL_Rect* Statusbar_PanelDraw(SDL_Surface *surf)
 	/* genconv path has no separate restore hook: restore here */
 	Statusbar_PanelRestore(surf);
 
-	if (!PanelUnderside)
+	overlay = Screen_GetOverlaySurface(PanelRect.w, PanelRect.h);
+	if (overlay)
 	{
-		SDL_PixelFormat *fmt = surf->format;
-		PanelUnderside = SDL_CreateRGBSurface(surf->flags,
-			PanelRect.w, PanelRect.h, fmt->BitsPerPixel,
-			fmt->Rmask, fmt->Gmask, fmt->Bmask, fmt->Amask);
-		if (!PanelUnderside)
-			return NULL;
+		target = overlay;
+		ytop = 0;
 	}
-	SDL_BlitSurface(surf, &PanelRect, PanelUnderside, NULL);
-	bPanelDrawn = true;
+	else
+	{
+		if (!PanelUnderside)
+		{
+			SDL_PixelFormat *fmt = surf->format;
+			PanelUnderside = SDL_CreateRGBSurface(surf->flags,
+				PanelRect.w, PanelRect.h, fmt->BitsPerPixel,
+				fmt->Rmask, fmt->Gmask, fmt->Bmask, fmt->Amask);
+			if (!PanelUnderside)
+				return NULL;
+		}
+		SDL_BlitSurface(surf, &PanelRect, PanelUnderside, NULL);
+		bPanelDrawn = true;
 
-	width = Statusbar_PanelWalk(surf, 0, false);
-	xstart = (PanelRect.w - width) / 2;
+		target = surf;
+		ytop = PanelRect.y;
+	}
+
+	prev = SDLGui_SwapSurface(target);
+	width = Statusbar_PanelWalk(target, 0, ytop, false);
+	xstart = (target->w - width) / 2;
 	if (xstart < PanelFontW / 2)
 		xstart = PanelFontW / 2;
 
-	/* no background box: the items are drawn straight onto the
-	 * emulation screen, the text carrying its own drop shadow
+	/* no background box: the items are drawn straight onto whatever
+	 * is behind them, the text carrying its own drop shadow
 	 */
-	Statusbar_PanelWalk(surf, xstart, true);
+	Statusbar_PanelWalk(target, xstart, ytop, true);
+	SDLGui_SwapSurface(prev);
+
+	/* the caller uses this only to force the frame to be shown, which
+	 * the overlay needs too for its meters to keep moving
+	 */
 	return &PanelRect;
 }
 

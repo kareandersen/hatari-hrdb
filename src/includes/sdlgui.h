@@ -82,6 +82,7 @@ void SDLGui_InjectText(char c);
 extern void SDLGui_GetFontSize(int *width, int *height);
 extern void SDLGui_Text(int x, int y, const char *txt);
 extern void SDLGui_TextShadow(int x, int y, const char *txt);
+extern SDL_Surface *SDLGui_SwapSurface(SDL_Surface *pScrn);
 extern void SDLGui_DrawDialog(const SGOBJ *dlg);
 extern void SDLGui_ScaleMouseStateCoordinates(int *x, int *y);
 extern int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event *pEventOut, int current_object);

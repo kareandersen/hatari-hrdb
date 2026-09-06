@@ -380,6 +380,20 @@ void SDLGui_Text(int x, int y, const char *txt)
 
 /*-----------------------------------------------------------------------*/
 /**
+ * Point GUI drawing at another surface, keeping the font that was
+ * chosen for the screen, and return the previous surface.  Used for
+ * drawing the status overlay into its own surface.
+ */
+SDL_Surface *SDLGui_SwapSurface(SDL_Surface *pScrn)
+{
+	SDL_Surface *prev = pSdlGuiScrn;
+
+	pSdlGuiScrn = pScrn;
+	return prev;
+}
+
+/*-----------------------------------------------------------------------*/
+/**
  * Draw a text string with a black drop shadow, for text drawn on top of
  * the emulation screen, where the background is whatever the Atari
  * happens to show.

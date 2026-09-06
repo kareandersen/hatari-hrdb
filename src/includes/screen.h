@@ -117,6 +117,7 @@ extern void Screen_UpdateFastForward(void);
 extern bool Screen_Draw(void);
 extern void Screen_SetTextureScale(int width, int height, int win_width,
                                    int win_height, bool bForceCreation);
+extern SDL_Surface *Screen_GetOverlaySurface(int width, int height);
 extern void Screen_SetGenConvSize(int width, int height, bool bForceChange);
 extern void Screen_GenConvUpdate(SDL_Rect *extra, bool forced);
 extern Uint32 Screen_GetGenConvWidth(void);

@@ -116,6 +116,11 @@ static bool Screen_DrawFrame(bool bForceFlip);
 SDL_Window *sdlWindow;
 static SDL_Renderer *sdlRenderer;
 static SDL_Texture *sdlTexture;
+/* status overlay, drawn separately from the emulation frame buffer so
+ * that it can sit in the black padding below the scaled Atari screen */
+static SDL_Surface *sdlOverlay;
+static SDL_Texture *sdlOverlayTexture;
+static SDL_Rect sdlOverlayRect;         /* its place in the window */
 static bool bUseSdlRenderer;            /* true when using SDL2 renderer */
 static bool bPrevUseVsync = false;      /* vsync setting given to SDL */
 
@@ -163,6 +168,18 @@ void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 		 */
 		SDL_RenderClear(sdlRenderer);
 		SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+		if (sdlOverlay && ConfigureParams.Screen.bShowStatusOverlay)
+		{
+			SDL_UpdateTexture(sdlOverlayTexture, NULL,
+					  sdlOverlay->pixels, sdlOverlay->pitch);
+			/* the logical size confines drawing to the scaled
+			 * Atari screen, so drop it to reach the padding,
+			 * then put it back for the next frame
+			 */
+			SDL_RenderSetLogicalSize(sdlRenderer, 0, 0);
+			SDL_RenderCopy(sdlRenderer, sdlOverlayTexture, NULL, &sdlOverlayRect);
+			SDL_RenderSetLogicalSize(sdlRenderer, sdlscrn->w, sdlscrn->h);
+		}
 		SDL_RenderPresent(sdlRenderer);
 	}
 	else
@@ -320,6 +337,16 @@ static void Screen_FreeSDL2Resources(void)
 		SDL_DestroyTexture(sdlTexture);
 		sdlTexture = NULL;
 	}
+	if (sdlOverlayTexture)
+	{
+		SDL_DestroyTexture(sdlOverlayTexture);
+		sdlOverlayTexture = NULL;
+	}
+	if (sdlOverlay)
+	{
+		SDL_FreeSurface(sdlOverlay);
+		sdlOverlay = NULL;
+	}
 	if (sdlscrn)
 	{
 		if (bUseSdlRenderer)
@@ -379,6 +406,91 @@ void Screen_SetTextureScale(int width, int height, int win_width, int win_height
 			Main_ErrorExit("Failed to create texture:", SDL_GetError(), -3);
 		}
 	}
+}
+
+
+/**
+ * Largest whole-number scale at which the frame buffer still fits the
+ * window, i.e. what SDL_RenderSetIntegerScale() picks for the emulation
+ * screen.  Never less than 1:1, at which point it crops instead.
+ */
+static int Screen_GetIntegerScale(int win_width, int win_height)
+{
+	int scale = win_width / sdlscrn->w;
+	int scaley = win_height / sdlscrn->h;
+
+	if (scaley < scale)
+		scale = scaley;
+	if (scale < 1)
+		scale = 1;
+	return scale;
+}
+
+/**
+ * Surface for drawing the status overlay, in Atari pixels and cleared
+ * to fully transparent.
+ *
+ * Whole-pixel scaling usually leaves black padding above and below the
+ * Atari screen, and the overlay goes into the bottom one instead of on
+ * top of the emulation.  That means drawing it outside the scaled area,
+ * which the emulation frame buffer cannot reach, so it gets a surface
+ * (and texture) of its own, composited by Screen_UpdateRects() at the
+ * same whole-number scale as the screen itself.
+ *
+ * Returns NULL when there is no renderer to composite with, leaving the
+ * caller to draw into the emulation frame buffer as before.
+ */
+SDL_Surface *Screen_GetOverlaySurface(int width, int height)
+{
+	int win_width, win_height, scale;
+
+	if (!(bUseSdlRenderer && sdlRenderer) || width <= 0 || height <= 0)
+		return NULL;
+
+	if (SDL_GetRendererOutputSize(sdlRenderer, &win_width, &win_height) != 0)
+		return NULL;
+
+	if (sdlOverlay && (sdlOverlay->w != width || sdlOverlay->h != height))
+	{
+		SDL_FreeSurface(sdlOverlay);
+		sdlOverlay = NULL;
+		SDL_DestroyTexture(sdlOverlayTexture);
+		sdlOverlayTexture = NULL;
+	}
+	if (!sdlOverlay)
+	{
+		sdlOverlay = SDL_CreateRGBSurfaceWithFormat(0, width, height, 32,
+							    SDL_PIXELFORMAT_ARGB8888);
+		if (!sdlOverlay)
+			return NULL;
+
+		/* scaled by a whole number like the screen, so likewise
+		 * sampled with nearest pixel
+		 */
+		SDL_SetHintWithPriority(SDL_HINT_RENDER_SCALE_QUALITY, "0", SDL_HINT_OVERRIDE);
+		sdlOverlayTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_ARGB8888,
+						      SDL_TEXTUREACCESS_STREAMING,
+						      width, height);
+		if (!sdlOverlayTexture)
+		{
+			SDL_FreeSurface(sdlOverlay);
+			sdlOverlay = NULL;
+			return NULL;
+		}
+		SDL_SetTextureBlendMode(sdlOverlayTexture, SDL_BLENDMODE_BLEND);
+	}
+
+	/* bottom of the window, i.e. in the padding when there is any,
+	 * lined up with the sides of the emulation screen
+	 */
+	scale = Screen_GetIntegerScale(win_width, win_height);
+	sdlOverlayRect.w = width * scale;
+	sdlOverlayRect.h = height * scale;
+	sdlOverlayRect.x = (win_width - sdlOverlayRect.w) / 2;
+	sdlOverlayRect.y = win_height - sdlOverlayRect.h;
+
+	SDL_FillRect(sdlOverlay, NULL, SDL_MapRGBA(sdlOverlay->format, 0, 0, 0, 0));
+	return sdlOverlay;
 }
 
 
