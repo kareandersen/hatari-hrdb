@@ -711,10 +711,11 @@ Zoom factor is then used to scale that up (or down) to the Hatari
 output window.  This way scaling results always in approximately
 same sized Hatari window.
 </p><p class="paramdesc">
-With non-integer zoom factors, linear scaling is used to smooth out
-the output, with integer zoom factors, scaling is done using nearest
-neighboring pixels for sharper output.  This applies also to window
-resizes.
+Atari pixels are always kept square: scaling uses nearest neighboring
+pixels by a whole number only, so a non-integer zoom factor is rounded
+down.  This applies also to window resizes and to fullscreen, where
+Hatari picks the largest whole-number scale that fits and fills the
+leftover area with black.
 </p><p class="paramdesc">
 To avoid zooming for low ST resolutions, use "--zoom 1 --max-width 416
 --max-height 276" (if you don't need borders, 320x200 size is enough).

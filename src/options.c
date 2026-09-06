@@ -293,7 +293,7 @@ static const opt_t HatariOptions[] = {
 	{ OPT_MAXHEIGHT, NULL, "--max-height",
 	  "<x>", "Maximum Hatari screen height before scaling" },
 	{ OPT_ZOOM, "-z", "--zoom",
-	  "<x>", "Hatari screen/window scaling factor (1.0 - 8.0)" },
+	  "<x>", "Hatari screen/window scaling factor (whole numbers, 1 - 8)" },
 	{ OPT_DISABLE_VIDEO,   NULL, "--disable-video",
 	  "<bool>", "Run emulation without displaying video (audio only)" },
 

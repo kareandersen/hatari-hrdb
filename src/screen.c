@@ -118,7 +118,6 @@ static SDL_Renderer *sdlRenderer;
 static SDL_Texture *sdlTexture;
 static bool bUseSdlRenderer;            /* true when using SDL2 renderer */
 static bool bPrevUseVsync = false;      /* vsync setting given to SDL */
-static bool bIsSoftwareRenderer;
 
 /* When the window is hidden (e.g. on another virtual desktop), Wayland
  * compositors throttle it and presenting blocks the emulation loop.
@@ -157,9 +156,12 @@ void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 	if (bUseSdlRenderer)
 	{
 		SDL_UpdateTexture(sdlTexture, NULL, screen->pixels, screen->pitch);
-		/* Need to clear the renderer context for certain accelerated cards */
-		if (!bIsSoftwareRenderer)
-			SDL_RenderClear(sdlRenderer);
+		/* Whole-pixel scaling leaves letterbox bars that the copy
+		 * below does not touch, so they have to be painted every
+		 * frame.  This also clears the renderer context, which
+		 * certain accelerated cards need.
+		 */
+		SDL_RenderClear(sdlRenderer);
 		SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
 		SDL_RenderPresent(sdlRenderer);
 	}
@@ -332,63 +334,29 @@ static void Screen_FreeSDL2Resources(void)
 }
 
 /*
- * Create window backing texture when needed, with suitable scaling
- * quality.
+ * Create window backing texture when needed.
  *
  * Window size is affected by ZoomFactor setting and window resizes
  * done by the user, and constrained by maximum window size setting
- * and desktop size.
- *
- * Calculate scale factor for the given resulting window size, compared
- * to the size of the SDL frame buffer rendered by Hatari, and based on
- * that, set the render scaling quality hint to:
- * - (sharp) nearest pixel sampling for integer zoom factors
- * - (smoothing/blurring) linear filtering otherwise
- *
- * If hint value changes from earlier one (or force flag is used),
- * window texture needs to be re-created to apply the scaling quality
- * change.
+ * and desktop size.  Whatever it ends up being, the renderer scales
+ * the frame buffer by a whole number only (see Screen_SetSDLVideoSize),
+ * so the texture is always sampled with nearest pixel: linear filtering
+ * could only blur an exact multiple.
  */
 void Screen_SetTextureScale(int width, int height, int win_width, int win_height, bool bForce)
 {
-	static char prev_quality;
-	float scale_w, scale_h, scale;
-	char quality;
 	int pfmt;
 
 	if (!(bUseSdlRenderer && sdlRenderer))
 		return;
 
-	scale_w = (float)win_width / width;
-	scale_h = (float)win_height / height;
-	if (bInFullScreen)
-		/* SDL letterboxes fullscreen so it's enough for
-		 * closest dimension to window size being evenly
-		 * divisible.
-		 */
-		scale = fminf(scale_w, scale_h);
-	else
-		/* For windowed mode (= no letterboxing), both
-		 * dimensions (here, their avg) need to be evenly
-		 * divisible for nearest neighbor scaling to look good.
-		 */
-		scale = (scale_w + scale_h) / 2.0;
+	DEBUGPRINT(("%dx%d frame buffer in %dx%d window, whole-pixel scaled\n",
+		    width, height, win_width, win_height));
 
-	if (scale == floorf(scale))
-		quality = '0';	// nearest pixel
-	else
-		quality = '1';	// linear filtering
-
-	DEBUGPRINT(("%dx%d / %dx%d -> scale = %g, Render Scale Quality = %c\n",
-		    win_width, win_height, width, height, scale, quality));
-
-	if (bForce || quality != prev_quality)
+	if (bForce || !sdlTexture)
 	{
-		char hint[2] = { quality, 0 };
-		prev_quality = quality;
-
 		/* hint needs to be there before texture */
-		SDL_SetHintWithPriority(SDL_HINT_RENDER_SCALE_QUALITY, hint, SDL_HINT_OVERRIDE);
+		SDL_SetHintWithPriority(SDL_HINT_RENDER_SCALE_QUALITY, "0", SDL_HINT_OVERRIDE);
 
 		if (sdlTexture)
 		{
@@ -507,7 +475,7 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 	bool bUseDummyMode;
 	static bool bPrevInFullScreen;
 	int win_width, win_height;
-	float scale = 1.0;
+	int zoom = 1;
 
 	/* Check if we really have to change the video mode: */
 	if (sdlscrn != NULL && sdlscrn->w == width && sdlscrn->h == height && !bForceChange)
@@ -529,9 +497,14 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 	win_height = height;
 	if (bUseSdlRenderer)
 	{
-		scale = ConfigureParams.Screen.nZoomFactor;
-		win_width *= scale;
-		win_height *= scale;
+		/* Only whole-number zoom keeps Atari pixels square, so a
+		 * fractional setting from an old config is rounded down.
+		 */
+		zoom = (int)ConfigureParams.Screen.nZoomFactor;
+		if (zoom < 1)
+			zoom = 1;
+		win_width = width * zoom;
+		win_height = height * zoom;
 	}
 	if (bInFullScreen)
 	{
@@ -550,14 +523,20 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 			sdlVideoFlags = SDL_WINDOW_RESIZABLE;
 		else
 			sdlVideoFlags = 0;
-		/* Make sure that window is not bigger than current desktop */
+		/* Make sure that window is not bigger than current desktop.
+		 * Drop whole zoom steps rather than clamping to the desktop
+		 * size, which would leave the window a non-multiple of the
+		 * Atari resolution and so letterbox it from the start.
+		 */
 		if (bUseSdlRenderer)
 		{
 			Resolution_GetDesktopSize(&deskw, &deskh);
-			if (win_width > deskw)
-				win_width = deskw;
-			if (win_height > deskh)
-				win_height = deskh;
+			while (zoom > 1 && (win_width > deskw || win_height > deskh))
+			{
+				zoom--;
+				win_width = width * zoom;
+				win_height = height * zoom;
+			}
 		}
 	}
 
@@ -598,10 +577,17 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 			Main_ErrorExit("Failed to create window:", SDL_GetError(), -1);
 		}
 	}
+	if (bUseSdlRenderer && !bInFullScreen)
+	{
+		/* 1:1 is the smallest whole-number scale, so below this the
+		 * integer scaler would crop the Atari screen instead of
+		 * shrinking it
+		 */
+		SDL_SetWindowMinimumSize(sdlWindow, width, height);
+	}
 	if (bUseSdlRenderer)
 	{
 		int rm, bm, gm;
-		SDL_RendererInfo sRenderInfo = { 0 };
 
 		sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);
 		if (!sdlRenderer)
@@ -610,18 +596,20 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 			Main_ErrorExit("Failed to create renderer:", SDL_GetError(), 1);
 		}
 
-		if (bInFullScreen)
-			SDL_RenderSetLogicalSize(sdlRenderer, width, height);
-		else
-			SDL_RenderSetScale(sdlRenderer, scale, scale);
+		/* Keep Atari pixels square in every mode: the renderer picks
+		 * the largest whole-number scale that fits the window and
+		 * centers the result, and the leftover area stays at the
+		 * black draw colour set below.
+		 */
+		SDL_RenderSetLogicalSize(sdlRenderer, width, height);
+#if SDL_VERSION_ATLEAST(2, 0, 5)
+		SDL_RenderSetIntegerScale(sdlRenderer, SDL_TRUE);
+#endif
 
 		/* Force to black to stop side bar artifacts on 16:9 monitors. */
 		SDL_SetRenderDrawColor(sdlRenderer, 0, 0, 0, 255);
 		SDL_RenderClear(sdlRenderer);
 		SDL_RenderPresent(sdlRenderer);
-
-		SDL_GetRendererInfo(sdlRenderer, &sRenderInfo);
-		bIsSoftwareRenderer = sRenderInfo.flags & SDL_RENDERER_SOFTWARE;
 
 		rm = 0x00FF0000;
 		gm = 0x0000FF00;
@@ -633,7 +621,6 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 	else
 	{
 		sdlscrn = SDL_GetWindowSurface(sdlWindow);
-		bIsSoftwareRenderer = true;
 	}
 
 	/* Exit if we can not open a screen */
