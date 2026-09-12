@@ -31,11 +31,10 @@ const char Vnc_fileid[] = "Hatari vnc.c";
 static rfbScreenInfoPtr vncScreen;
 static int fbWidth, fbHeight;
 
-/* Pointer state: VNC sends absolute framebuffer coordinates, the IKBD
- * wants deltas. Zoom carry accumulators as in Main_HandleMouseMotion(). */
+/* Pointer state: only the buttons need remembering, the position is
+ * handed to Main_SetMousePosition() as it arrives */
 static int ptrLastX = -1, ptrLastY;
 static int ptrLastMask;
-static int ptrCarryX, ptrCarryY;
 
 /* Modifier state tracked from the client's own modifier key events */
 static SDL_Keymod vncMod = KMOD_NONE;
@@ -249,28 +248,10 @@ static void Vnc_PtrEvent(int buttonMask, int x, int y, rfbClientPtr cl)
 		return;
 	}
 
-	if (ptrLastX >= 0)
-	{
-		int dx = x - ptrLastX;
-		int dy = y - ptrLastY;
+	/* VNC reports absolute positions in frame buffer coordinates,
+	 * which is exactly what the Atari pointer can be placed with */
+	Main_SetMousePosition(x, y);
 
-		/* VNC coordinates are sdlscrn pixels, so only the emulated
-		 * zoom factor applies (no host window rescale) */
-		if (nScreenZoomX != 1)
-		{
-			dx += ptrCarryX;
-			ptrCarryX = dx % nScreenZoomX;
-			dx /= nScreenZoomX;
-		}
-		if (nScreenZoomY != 1)
-		{
-			dy += ptrCarryY;
-			ptrCarryY = dy % nScreenZoomY;
-			dy /= nScreenZoomY;
-		}
-		KeyboardProcessor.Mouse.dx += dx;
-		KeyboardProcessor.Mouse.dy += dy;
-	}
 	ptrLastX = x;
 	ptrLastY = y;
 

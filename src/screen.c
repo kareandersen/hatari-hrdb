@@ -428,6 +428,40 @@ static int Screen_GetIntegerScale(int win_width, int win_height)
 }
 
 /**
+ * Where the visible Atari screen sits inside the frame buffer, with the
+ * borders left out, and how large it is in Atari pixels. This is the
+ * area the Atari mouse pointer can reach, so it is what host pointer
+ * positions have to be mapped onto.
+ */
+void Screen_GetAtariArea(SDL_Rect *pArea, int *pWidth, int *pHeight)
+{
+	pArea->x = nBorderPixelsLeft * nScreenZoomX;
+	pArea->y = nBorderPixelsTop * nScreenZoomY;
+	pArea->w = sdlscrn->w - (nBorderPixelsLeft + nBorderPixelsRight) * nScreenZoomX;
+	pArea->h = STScreenRect.h - (nBorderPixelsTop + nBorderPixelsBottom) * nScreenZoomY;
+
+	*pWidth = pArea->w / nScreenZoomX;
+	*pHeight = pArea->h / nScreenZoomY;
+}
+
+
+/**
+ * How many host pixels one frame buffer pixel covers on screen, for
+ * scaling mouse motion. 1 when nothing scales the output.
+ */
+int Screen_GetHostScale(void)
+{
+	int win_width, win_height;
+
+	if (!(bUseSdlRenderer && sdlRenderer) || !sdlscrn)
+		return 1;
+	if (SDL_GetRendererOutputSize(sdlRenderer, &win_width, &win_height) != 0)
+		return 1;
+	return Screen_GetIntegerScale(win_width, win_height);
+}
+
+
+/**
  * Surface for drawing the status overlay, in Atari pixels and cleared
  * to fully transparent.
  *
@@ -701,6 +735,12 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 	if (bUseSdlRenderer)
 	{
 		int rm, bm, gm;
+
+		/* Hatari scales mouse motion itself, from the same numbers
+		 * it scales the screen with, so keep SDL from dividing the
+		 * relative motion by the logical size on top of that
+		 */
+		SDL_SetHintWithPriority(SDL_HINT_MOUSE_RELATIVE_SCALING, "0", SDL_HINT_OVERRIDE);
 
 		sdlRenderer = SDL_CreateRenderer(sdlWindow, -1, 0);
 		if (!sdlRenderer)

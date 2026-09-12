@@ -95,6 +95,7 @@ extern void IKBD_InterruptHandler_AutoSend(void);
 extern void IKBD_UpdateClockOnVBL ( void );
 
 extern void IKBD_PressSTKey(uint8_t ScanCode, bool bPress);
+extern void IKBD_SetMouseAreaLimits(int MaxX, int MaxY);
 
 extern void IKBD_Info(FILE *fp, uint32_t dummy);
 

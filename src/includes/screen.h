@@ -84,6 +84,8 @@ enum
 
 extern bool bGrabMouse;
 extern void Screen_UpdateMouseGrab(void);
+extern int Screen_GetHostScale(void);
+extern void Screen_GetAtariArea(SDL_Rect *pArea, int *pWidth, int *pHeight);
 extern bool bInFullScreen;
 extern int nScreenZoomX, nScreenZoomY;
 extern int nBorderPixelsLeft, nBorderPixelsRight;

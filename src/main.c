@@ -515,7 +515,74 @@ bool Main_ShowCursor(bool show)
 /**
  * Handle mouse motion event.
  */
-static void Main_HandleMouseMotion(int dx, int dy)
+/**
+ * Move the Atari mouse pointer to the position x,y given in frame
+ * buffer coordinates, i.e. put it where the pointer of whoever drives
+ * Hatari is - the host pointer, or a remote one over VNC.
+ *
+ * The position outside the Atari screen area is clamped to it, so the
+ * borders are not reachable, and the delta is taken against the
+ * position the IKBD will have once the pending motion is sent, so that
+ * several moves within one frame do not add up.
+ */
+void Main_SetMousePosition(int x, int y)
+{
+	SDL_Rect area;
+	int width, height, tx, ty;
+
+	if (!sdlscrn)
+		return;
+
+	Screen_GetAtariArea(&area, &width, &height);
+	IKBD_SetMouseAreaLimits(width - 1, height - 1);
+
+	tx = (x - area.x) / nScreenZoomX;
+	ty = (y - area.y) / nScreenZoomY;
+	if (tx < 0)
+		tx = 0;
+	else if (tx >= width)
+		tx = width - 1;
+	if (ty < 0)
+		ty = 0;
+	else if (ty >= height)
+		ty = height - 1;
+
+	KeyboardProcessor.Mouse.dx = tx - KeyboardProcessor.Abs.X;
+	KeyboardProcessor.Mouse.dy = (ty - KeyboardProcessor.Abs.Y)
+				     * KeyboardProcessor.Mouse.YAxis;
+
+	/* At the edges push past them: the Atari side stops at the same
+	 * border as the position tracked here, so overshooting pulls the
+	 * two pointers back together if the program ever moved its own
+	 * pointer behind our back.
+	 */
+	if (tx == 0)
+		KeyboardProcessor.Mouse.dx -= width;
+	else if (tx == width - 1)
+		KeyboardProcessor.Mouse.dx += width;
+	if (ty == 0)
+		KeyboardProcessor.Mouse.dy -= height * KeyboardProcessor.Mouse.YAxis;
+	else if (ty == height - 1)
+		KeyboardProcessor.Mouse.dy += height * KeyboardProcessor.Mouse.YAxis;
+}
+
+
+/**
+ * Feed host mouse motion to the IKBD.
+ *
+ * x,y are the pointer position in frame buffer coordinates (SDL has
+ * already mapped them out of the window and through the renderer's
+ * logical size), dx,dy the motion in host pixels.
+ *
+ * While the pointer is free its position is known, so it is mapped
+ * straight onto the Atari screen and the pointer is moved to wherever
+ * the host pointer is - independent of the window size, the scaling and
+ * of where the pointer entered the window. Captured, there is no
+ * position to map, so the motion is scaled down by the screen's own
+ * zoom and the whole-number scale the renderer draws it at, which is
+ * what keeps the two pointers moving at the same speed.
+ */
+static void Main_HandleMouseMotion(int dx, int dy, int x, int y)
 {
 	static int ax = 0, ay = 0;
 
@@ -526,43 +593,35 @@ static void Main_HandleMouseMotion(int dx, int dy)
 		bIgnoreNextMouseMotion = false;
 		return;
 	}
+	if (!sdlscrn)
+		return;
 
-	/* In zoomed low res mode, we divide dx and dy by the zoom factor so that
-	 * the ST mouse cursor stays in sync with the host mouse. However, we have
-	 * to take care of lowest bit of dx and dy which will get lost when
-	 * dividing. So we store these bits in ax and ay and add them to dx and dy
-	 * the next time. */
-	if (nScreenZoomX != 1)
+	if (!bGrabMouse && KeyboardProcessor.Mouse.XScale <= 1
+	    && KeyboardProcessor.Mouse.YScale <= 1)
 	{
-		dx += ax;
-		ax = dx % nScreenZoomX;
-		dx /= nScreenZoomX;
-	}
-	if (nScreenZoomY != 1)
-	{
-		dy += ay;
-		ay = dy % nScreenZoomY;
-		dy /= nScreenZoomY;
+		Main_SetMousePosition(x, y);
+		ax = ay = 0;
+		return;
 	}
 
-	if (!bInFullScreen)			/* Consider window scaling? */
+	/* Relative: scale host pixels down to Atari pixels, carrying the
+	 * remainders over so that slow movement is not lost to the division */
 	{
-		static int wx, wy;
-		int win_width, win_height, ndx, ndy;
+		int scale = Screen_GetHostScale();
+		int divx = nScreenZoomX * scale;
+		int divy = nScreenZoomY * scale;
 
-		SDL_GetWindowSize(sdlWindow, &win_width, &win_height);
-
-		if (sdlscrn->w != win_width)
+		if (divx > 1)
 		{
-			ndx = dx * sdlscrn->w;
-			dx = (ndx + wx) / win_width;
-			wx = (ndx + wx) % win_width;
+			dx += ax;
+			ax = dx % divx;
+			dx /= divx;
 		}
-		if (sdlscrn->h != win_height)
+		if (divy > 1)
 		{
-			ndy = dy * sdlscrn->h;
-			dy = (ndy + wy) / win_height;
-			wy = (ndy + wy) % win_height;
+			dy += ay;
+			ay = dy % divy;
+			dy /= divy;
 		}
 	}
 
@@ -652,7 +711,8 @@ void Main_EventHandler(bool remoteDebugging)
 			break;
 
 		 case SDL_MOUSEMOTION:               /* Read/Update internal mouse position */
-			Main_HandleMouseMotion(event.motion.xrel, event.motion.yrel);
+			Main_HandleMouseMotion(event.motion.xrel, event.motion.yrel,
+					       event.motion.x, event.motion.y);
 			bContinueProcessing = true;
 			break;
 
@@ -745,7 +805,8 @@ void Main_EventHandler(bool remoteDebugging)
 					int new_x, new_y;
 					SDL_GetMouseState(&new_x, &new_y);
 					Main_HandleMouseMotion(new_x - mleave_x,
-					                       new_y - mleave_y);
+							       new_y - mleave_y,
+							       new_x, new_y);
 					mleave_x = mleave_y = -1;
 				}
 				/* fall through */

@@ -1226,6 +1226,28 @@ static void IKBD_UpdateInternalMousePosition(void)
 
 /*-----------------------------------------------------------------------*/
 /**
+ * Set the area the mouse position is kept inside, in Atari pixels, when
+ * the running program has not set up absolute mouse mode itself (it then
+ * owns these limits and must not be overridden).
+ */
+void IKBD_SetMouseAreaLimits(int MaxX, int MaxY)
+{
+	if (KeyboardProcessor.MouseMode == AUTOMODE_MOUSEABS)
+		return;
+	if (MaxX <= 0 || MaxY <= 0)
+		return;
+
+	KeyboardProcessor.Abs.MaxX = MaxX;
+	KeyboardProcessor.Abs.MaxY = MaxY;
+	if (KeyboardProcessor.Abs.X > MaxX)
+		KeyboardProcessor.Abs.X = MaxX;
+	if (KeyboardProcessor.Abs.Y > MaxY)
+		KeyboardProcessor.Abs.Y = MaxY;
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
  * When running in maximum speed the emulation will not see 'double-clicks'
  * of the mouse as it is running so fast. In this case, we check for a
  * double-click and pass the 'up'/'down' messages in emulation time to
