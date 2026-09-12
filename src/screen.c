@@ -428,6 +428,35 @@ static int Screen_GetIntegerScale(int win_width, int win_height)
 }
 
 /**
+ * Convert a position in window coordinates, as SDL_GetMouseState()
+ * reports it, into frame buffer coordinates. Mouse positions in SDL
+ * *events* arrive converted already, this is for the polled state.
+ */
+void Screen_WindowToFrameBuffer(int *x, int *y)
+{
+	int win_w, win_h, scale;
+
+	if (!(bUseSdlRenderer && sdlRenderer) || !sdlscrn)
+		return;
+#if SDL_VERSION_ATLEAST(2, 0, 18)
+	{
+		float fx = 0.0f, fy = 0.0f;
+
+		SDL_RenderWindowToLogical(sdlRenderer, *x, *y, &fx, &fy);
+		*x = (int)fx;
+		*y = (int)fy;
+		return;
+	}
+#endif
+	if (SDL_GetWindowSize(sdlWindow, &win_w, &win_h), win_w <= 0 || win_h <= 0)
+		return;
+	scale = Screen_GetIntegerScale(win_w, win_h);
+	*x = (*x - (win_w - sdlscrn->w * scale) / 2) / scale;
+	*y = (*y - (win_h - sdlscrn->h * scale) / 2) / scale;
+}
+
+
+/**
  * Where the visible Atari screen sits inside the frame buffer, with the
  * borders left out, and how large it is in Atari pixels. This is the
  * area the Atari mouse pointer can reach, so it is what host pointer

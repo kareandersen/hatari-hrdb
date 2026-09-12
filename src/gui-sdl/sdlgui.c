@@ -1187,40 +1187,13 @@ static int SDLGui_HandleShortcut(SGOBJ *dlg, int key)
 }
 
 /**
- * Scale mouse state coordinates in case we've got a re-sized SDL2 window
- *
- * NOTE: while scaling done here fixes SDL2 reported mouse coords to
- * match Hatari framebuffer coords in scaled SDL2 windows, there's
- * another issue with (mouse _state_) coords in _fullscreen_.
- *
- * SDL2 deducts fullscreen letterboxing borders from those coords,
- * but not from the values returns by SDL2 window size functions
- * (and there's no function providing the letterbox border size).
- *
- * Atari resolutions are more narrow than today's widescreen monitor
- * resolutions, so typically fullscreen letterboxing borders are on
- * the sides => y-coord gets scaled OK, x-coord will be too small.
+ * Map mouse state coordinates onto the GUI surface: the polled state is
+ * in window coordinates, unlike the coordinates in mouse events, which
+ * SDL has already mapped through the renderer's logical size.
  */
 void SDLGui_ScaleMouseStateCoordinates(int *x, int *y)
 {
-	int win_width, win_height;
-	SDL_GetWindowSize(sdlWindow, &win_width, &win_height);
-
-	*x = *x * pSdlGuiScrn->w / win_width;
-	*y = *y * pSdlGuiScrn->h / win_height;
-}
-
-/**
- * Scale mouse event coordinates in case we've got a re-sized SDL2 window
- */
-static void SDLGui_ScaleMouseButtonCoordinates(SDL_MouseButtonEvent *bev)
-{
-	if (bInFullScreen)
-		return;
-
-	int x = bev->x, y = bev->y;
-	SDLGui_ScaleMouseStateCoordinates(&x, &y);
-	bev->x = x; bev->y = y;
+	Screen_WindowToFrameBuffer(x, y);
 }
 
 /*-----------------------------------------------------------------------*/
@@ -1393,7 +1366,6 @@ int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event 
 					break;
 				}
 				/* It was the left button: Find the object under the mouse cursor */
-				SDLGui_ScaleMouseButtonCoordinates(&sdlEvent.button);
 				obj = SDLGui_FindObj(dlg, sdlEvent.button.x, sdlEvent.button.y);
 				if (obj != SDLGUI_NOTFOUND)
 				{
@@ -1426,7 +1398,6 @@ int SDLGui_DoDialogExt(SGOBJ *dlg, bool (*isEventOut)(SDL_EventType), SDL_Event 
 					break;
 				}
 				/* It was the left button: Find the object under the mouse cursor */
-				SDLGui_ScaleMouseButtonCoordinates(&sdlEvent.button);
 				obj = SDLGui_FindObj(dlg, sdlEvent.button.x, sdlEvent.button.y);
 				if (obj != SDLGUI_NOTFOUND)
 				{

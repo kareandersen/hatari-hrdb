@@ -53,9 +53,9 @@ void Vnc_SetGuiMode(bool bEnter)
 }
 
 /**
- * Convert VNC framebuffer coordinates to window coordinates, the inverse
- * of SDLGui_ScaleMouseStateCoordinates(), since the dialogs scale event
- * coordinates from window space back to the GUI surface.
+ * Convert VNC frame buffer coordinates to window coordinates: pushed
+ * mouse events go through the same mapping back to the frame buffer as
+ * the ones SDL itself delivers.
  */
 static void Vnc_GuiWindowCoords(int *x, int *y)
 {

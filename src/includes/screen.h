@@ -86,6 +86,7 @@ extern bool bGrabMouse;
 extern void Screen_UpdateMouseGrab(void);
 extern int Screen_GetHostScale(void);
 extern void Screen_GetAtariArea(SDL_Rect *pArea, int *pWidth, int *pHeight);
+extern void Screen_WindowToFrameBuffer(int *x, int *y);
 extern bool bInFullScreen;
 extern int nScreenZoomX, nScreenZoomY;
 extern int nBorderPixelsLeft, nBorderPixelsRight;
