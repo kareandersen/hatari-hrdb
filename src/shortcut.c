@@ -92,11 +92,22 @@ static void ShortCut_MouseGrab(void)
 {
 	bGrabMouse = !bGrabMouse;        /* Toggle flag */
 
-	/* If we are in windowed mode, toggle the mouse cursor mode now: */
-	if (!bInFullScreen)
-	{
-		SDL_SetRelativeMouseMode(bGrabMouse);
-	}
+	/* Also in full screen mode: on a multi monitor setup the pointer
+	 * must be releasable to reach the other screens */
+	Screen_UpdateMouseGrab();
+	Statusbar_AddMessage(bGrabMouse ? "Mouse captured" : "Mouse released", 500);
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Shortcut to release the mouse pointer, whatever state it is in
+ */
+static void ShortCut_MouseRelease(void)
+{
+	bGrabMouse = false;
+	Screen_UpdateMouseGrab();
+	Statusbar_AddMessage("Mouse released", 500);
 }
 
 
@@ -302,6 +313,9 @@ void ShortCut_ActKey(void)
 	 case SHORTCUT_FULLSCREEN:
 		ShortCut_FullScreen();		/* Switch between fullscreen/windowed mode */
 		break;
+	 case SHORTCUT_MOUSERELEASE:
+		ShortCut_MouseRelease();
+		break;
 	 case SHORTCUT_STATUSOVERLAY:
 		ShortCut_StatusOverlay();
 		break;
@@ -403,6 +417,7 @@ bool Shortcut_Invoke(const char *shortcut)
 		{ SHORTCUT_SAVEMEM, "savemem" },
 		{ SHORTCUT_QUIT, "quit" },
 		{ SHORTCUT_STATUSOVERLAY, "statusoverlay" },
+		{ SHORTCUT_MOUSERELEASE, "mouserelease" },
 		{ SHORTCUT_NONE, NULL }
 	};
 	int i;

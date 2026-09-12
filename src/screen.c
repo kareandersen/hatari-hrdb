@@ -64,7 +64,8 @@ int nBorderPixelsLeft, nBorderPixelsRight;  /* Pixels in left and right border *
 static int nBorderPixelsTop, nBorderPixelsBottom;  /* Lines in top and bottom border */
 
 /* extern for shortcuts etc. */
-bool bGrabMouse = false;      /* Grab the mouse cursor in the window */
+bool bGrabMouse = false;      /* Capture the mouse pointer */
+static bool bGrabMouseWindowed;  /* capture setting outside full screen */
 bool bInFullScreen = false;   /* true if in full screen */
 
 /* extern for spec512.c */
@@ -887,7 +888,19 @@ static void Screen_ChangeResolution(bool bForceChange)
 		Screen_SetSTResolution(bForceChange);
 	}
 
-	SDL_SetRelativeMouseMode(bInFullScreen || bGrabMouse);
+	Screen_UpdateMouseGrab();
+}
+
+
+/**
+ * Apply the wanted mouse capture state. The pointer is captured only
+ * when the user asked for it, in full screen mode as well, so that it
+ * can always be released again - on a multi monitor setup the other
+ * screens are unreachable while the pointer is locked.
+ */
+void Screen_UpdateMouseGrab(void)
+{
+	SDL_SetRelativeMouseMode(bGrabMouse);
 }
 
 
@@ -1088,7 +1101,11 @@ void Screen_EnterFullScreen(void)
 		{
 			Screen_Refresh();
 		}
-		SDL_SetRelativeMouseMode(true);  /* Grab mouse pointer in fullscreen */
+		/* capture the pointer in fullscreen, but remember the
+		 * windowed setting: the grab shortcuts can release it */
+		bGrabMouseWindowed = bGrabMouse;
+		bGrabMouse = true;
+		Screen_UpdateMouseGrab();
 	}
 }
 
@@ -1134,11 +1151,9 @@ void Screen_ReturnFromFullScreen(void)
 			Screen_Refresh();
 		}
 
-		if (!bGrabMouse)
-		{
-			/* Un-grab mouse pointer in windowed mode */
-			SDL_SetRelativeMouseMode(false);
-		}
+		/* restore the windowed capture setting */
+		bGrabMouse = bGrabMouseWindowed;
+		Screen_UpdateMouseGrab();
 	}
 }
 

@@ -230,9 +230,8 @@ bool Main_PauseEmulation(bool visualize)
 		/* make sure msg gets shown */
 		Statusbar_Update(sdlscrn, true);
 
-		if (bGrabMouse && !bInFullScreen)
-			/* Un-grab mouse pointer in windowed mode */
-			SDL_SetRelativeMouseMode(false);
+		/* give the pointer back while paused */
+		SDL_SetRelativeMouseMode(false);
 	}
 	return true;
 }
@@ -255,9 +254,8 @@ bool Main_UnPauseEmulation(void)
 	/* Cause full screen update (to clear all) */
 	Screen_SetFullUpdate();
 
-	if (bGrabMouse)
-		/* Grab mouse pointer again */
-		SDL_SetRelativeMouseMode(true);
+	/* capture the pointer again if wanted */
+	Screen_UpdateMouseGrab();
 	return true;
 }
 

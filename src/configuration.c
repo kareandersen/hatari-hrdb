@@ -300,6 +300,7 @@ static const struct Config_Tag configs_ShortCutWithMod[] =
 	{ "kSwitchPadA", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_PAD_A] },
 	{ "kSwitchPadB", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_PAD_B] },
 	{ "kStatusOverlay", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_STATUSOVERLAY] },
+	{ "kMouseRelease", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_MOUSERELEASE] },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -330,6 +331,7 @@ static const struct Config_Tag configs_ShortCutWithoutMod[] =
 	{ "kSwitchPadA", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_PAD_A] },
 	{ "kSwitchPadB", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_PAD_B] },
 	{ "kStatusOverlay", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_STATUSOVERLAY] },
+	{ "kMouseRelease", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_MOUSERELEASE] },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -765,6 +767,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_SAVEMEM] = SDLK_k;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_INSERTDISKA] = SDLK_d;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_STATUSOVERLAY] = SDLK_h;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_MOUSERELEASE] = SDLK_ESCAPE;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_JOY_0] = SDLK_F1;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_JOY_1] = SDLK_F2;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_PAD_A] = SDLK_F3;

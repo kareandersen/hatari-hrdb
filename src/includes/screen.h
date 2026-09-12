@@ -83,6 +83,7 @@ enum
 
 
 extern bool bGrabMouse;
+extern void Screen_UpdateMouseGrab(void);
 extern bool bInFullScreen;
 extern int nScreenZoomX, nScreenZoomY;
 extern int nBorderPixelsLeft, nBorderPixelsRight;
