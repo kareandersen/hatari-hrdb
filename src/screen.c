@@ -940,7 +940,26 @@ static void Screen_ChangeResolution(bool bForceChange)
  */
 void Screen_UpdateMouseGrab(void)
 {
-	SDL_SetRelativeMouseMode(bGrabMouse);
+	SDL_bool wanted = bGrabMouse ? SDL_TRUE : SDL_FALSE;
+
+	if (!sdlWindow)
+		return;
+
+	/* Relative mode locks the pointer, the window grab confines it:
+	 * releasing has to undo both, or the pointer stays caught while
+	 * Hatari believes it let go.
+	 */
+	SDL_SetRelativeMouseMode(wanted);
+	SDL_SetWindowGrab(sdlWindow, wanted);
+
+	/* the host pointer stays hidden over the window either way: the
+	 * Atari pointer is drawn under it and now follows it exactly
+	 */
+	Main_ShowCursor(false);
+
+	if (SDL_GetRelativeMouseMode() != wanted)
+		Log_Printf(LOG_WARN, "Mouse %s failed: %s\n",
+		           bGrabMouse ? "capture" : "release", SDL_GetError());
 }
 
 
