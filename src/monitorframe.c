@@ -4,7 +4,8 @@
   This file is distributed under the GNU General Public License, version 2
   or at your option any later version. Read the file gpl.txt for details.
 
-  Draw the front of an Atari SC1224 monitor into the padding that
+  Draw the front of an Atari SC1224 monitor - or with the monochrome
+  monitor type, its name plate saying SM124 - into the padding that
   whole-pixel scaling leaves around the emulation screen, instead of
   plain black.  With black padding a dark picture, or borders that did
   not open, cannot be told apart from the window around them.
@@ -164,15 +165,27 @@ static const glyph_t text_1224[] = {
 	FIGURE(glyph_1, 0, 0.40f), FIGURE(glyph_2, 0.42f, 0.60f),
 	FIGURE(glyph_2, 1.03f, 0.60f), FIGURE(glyph_4, 1.64f, 0.65f),
 };
+static const glyph_t text_124[] = {
+	FIGURE(glyph_1, 0, 0.40f), FIGURE(glyph_2, 0.42f, 0.60f),
+	FIGURE(glyph_4, 1.03f, 0.65f),
+};
 
 /* placed as on the plate of a real SC1224, the Fuji and SC1224 in
  * reflective silver, ATARI in matte blue */
-static const textrun_t badgeText[] = {
+static const textrun_t badgeColor[] = {
 	{ OUTLINED(logo_fuji),  0.23f, 0.25f, 0.60f, 0.01f, &SILVER },
 	{ OUTLINED(logo_atari), 1.17f, 0.25f, 0.60f, 0.02f, &BLUE },
 	/* heavier on the plate than even the boldest cut of the font */
 	{ OUTLINED(logo_sc),    5.68f, 0.25f, 0.60f, 0.05f, &SILVER },
 	{ STROKED(text_1224),   6.66f, 0.25f, 0.60f, 0.17f, &SILVER },
+};
+/* the same plate for the monochrome SM124, its name ending where
+ * SC1224 does */
+static const textrun_t badgeMono[] = {
+	{ OUTLINED(logo_fuji),  0.23f, 0.25f, 0.60f, 0.01f, &SILVER },
+	{ OUTLINED(logo_atari), 1.17f, 0.25f, 0.60f, 0.02f, &BLUE },
+	{ OUTLINED(logo_sm),    5.83f, 0.25f, 0.60f, 0.05f, &SILVER },
+	{ STROKED(text_124),    7.03f, 0.25f, 0.60f, 0.17f, &SILVER },
 };
 #define BADGE_W		8.57f	/* plate length, in plate heights */
 #define BADGE_SLANT	1.04f	/* its ends: sideways shift per height */
@@ -188,6 +201,7 @@ typedef struct
 typedef struct
 {
 	float ux, uy;			/* tube width and height */
+	bool mono;			/* an SM124 rather than an SC1224 */
 	int screen_w, screen_h;
 	rrect_t tube, open, lip, body, plinth, lamp, badge;
 	float badge_h, badge_x;
@@ -210,6 +224,7 @@ typedef struct
 	/* what it was drawn for */
 	int screen_w, screen_h;
 	int display_w, display_h;
+	bool mono;
 	SDL_Rect atari;
 	Uint32 rgb;
 	unsigned int used;	/* when last used, to replace the oldest */
@@ -535,8 +550,11 @@ static void MonitorFrame_Print(float *c, const layout_t *lay, float x, float y)
  * middle of its left end, over colour c. 'h' is the plate height in
  * pixels.
  */
-static void MonitorFrame_Badge(float *c, const float *base, float x, float y, float h)
+static void MonitorFrame_Badge(float *c, const float *base, float x, float y, float h,
+			       bool mono)
 {
+	const textrun_t *text = mono ? badgeMono : badgeColor;
+	const int count = mono ? NUM(badgeMono) : NUM(badgeColor);
 	const float norm = 1.0f / sqrtf(1 + BADGE_SLANT * BADGE_SLANT);
 	float u = x / h, v = y / h, d, col[3];
 	layout_t lay;
@@ -557,10 +575,10 @@ static void MonitorFrame_Badge(float *c, const float *base, float x, float y, fl
 	MonitorFrame_Mix(c, col, MonitorFrame_Cover(d) *
 			 (1 - MonitorFrame_Smooth(0, fmaxf(1.0f, 0.015f * h), -d)));
 
-	for (i = 0; i < NUM(badgeText); i++)
+	for (i = 0; i < count; i++)
 	{
 		/* top and cap height on whole pixels */
-		lay.run = &badgeText[i];
+		lay.run = &text[i];
 		lay.x = lay.run->x * h;
 		lay.y = roundf(lay.run->y * h);
 		lay.cap = fmaxf(roundf(lay.run->cap * h), 1);
@@ -588,11 +606,13 @@ static void MonitorFrame_Grow(rrect_t *r, const rrect_t *from, float left,
  * with the screen in its middle, can show.
  */
 static void MonitorFrame_Layout(geom_t *g, int screen_w, int screen_h,
-				int display_w, int display_h, const SDL_Rect *atari)
+				int display_w, int display_h, bool mono,
+				const SDL_Rect *atari)
 {
 	float ux, uy, cx, cy, margin;
 	SDL_Rect view;
 
+	g->mono = mono;
 	g->screen_w = screen_w;
 	g->screen_h = screen_h;
 
@@ -711,7 +731,7 @@ static Uint32 MonitorFrame_Pixel(const geom_t *g, const float *base, float px, f
 		if (py > g->badge.y0 - 1 && py < g->badge.y1 + 1
 		    && px > g->badge.x0 && px < g->badge.x1)
 			MonitorFrame_Badge(c, base, px - g->badge_x,
-					   py - g->badge.y0, g->badge_h);
+					   py - g->badge.y0, g->badge_h, g->mono);
 
 		if (px > g->lamp.x0 - 1 && px < g->lamp.x1 + 1
 		    && py > g->lamp.y0 - 1 && py < g->lamp.y1 + 1)
@@ -813,8 +833,8 @@ static void MonitorFrame_Blit(SDL_Renderer *renderer, SDL_Texture *texture,
  * cache, or drawn now in place of the one least recently used.
  */
 static frame_t *MonitorFrame_Get(SDL_Renderer *renderer, int screen_w, int screen_h,
-				 int display_w, int display_h, const SDL_Rect *atari,
-				 Uint32 rgb)
+				 int display_w, int display_h, bool mono,
+				 const SDL_Rect *atari, Uint32 rgb)
 {
 	frame_t *f, *oldest = &frameCache[0];
 	geom_t geom;
@@ -826,6 +846,7 @@ static frame_t *MonitorFrame_Get(SDL_Renderer *renderer, int screen_w, int scree
 		f = &frameCache[i];
 		if (f->texture && f->screen_w == screen_w && f->screen_h == screen_h
 		    && f->display_w == display_w && f->display_h == display_h
+		    && f->mono == mono
 		    && !memcmp(&f->atari, atari, sizeof(*atari)) && f->rgb == rgb)
 		{
 			f->used = ++frameClock;
@@ -838,7 +859,7 @@ static frame_t *MonitorFrame_Get(SDL_Renderer *renderer, int screen_w, int scree
 	f = oldest;
 	if (f->texture)
 		SDL_DestroyTexture(f->texture);
-	MonitorFrame_Layout(&geom, screen_w, screen_h, display_w, display_h, atari);
+	MonitorFrame_Layout(&geom, screen_w, screen_h, display_w, display_h, mono, atari);
 	pixels = calloc((size_t)geom.area.w * geom.area.h, sizeof(*pixels));
 	f->texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
 				       SDL_TEXTUREACCESS_STATIC,
@@ -860,6 +881,7 @@ static frame_t *MonitorFrame_Get(SDL_Renderer *renderer, int screen_w, int scree
 	f->screen_h = screen_h;
 	f->display_w = display_w;
 	f->display_h = display_h;
+	f->mono = mono;
 	f->atari = *atari;
 	f->rgb = rgb;
 	f->used = ++frameClock;
@@ -893,6 +915,7 @@ void MonitorFrame_Draw(SDL_Renderer *renderer, int win_w, int win_h,
 		return;
 
 	f = MonitorFrame_Get(renderer, screen->w, screen->h, display_w, display_h,
+			     ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_MONO,
 			     &rel, MonitorFrame_GetColor());
 	if (!f)
 		return;

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Generate src/monitorframe_logo.h: the Fuji symbol, the ATARI lettering
-and the SC of SC1224 on the name plate of the SC1224 monitor frame, as
+and the SC of SC1224 (or SM of SM124) on the name plate of the monitor frame, as
 polygon outlines taken from the SF Atarian System fonts, which have the
 Fuji on U+002A. The figures of the font are not the ones on the plate,
 so those are drawn by monitorframe.c itself.
@@ -31,6 +31,7 @@ OUTLINES = (
     ("logo_fuji", "SF_Atarian_System_Bold.ttf", "*", 1.0, 0, 0.09),
     ("logo_atari", "SF_Atarian_System_Bold.ttf", "ATARI", 1.15, 0.03, 0),
     ("logo_sc", "SF_Atarian_System_Extended_Bold.ttf", "SC", 0.85, -0.04, 0),
+    ("logo_sm", "SF_Atarian_System_Extended_Bold.ttf", "SM", 0.85, -0.04, 0),
 )
 
 
