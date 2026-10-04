@@ -801,7 +801,18 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 
 	if (sdlWindow)
 	{
-		if ((SDL_GetWindowFlags(sdlWindow) & SDL_WINDOW_MAXIMIZED) == 0)
+		int cur_width, cur_height;
+
+		/* A resizable window keeps the size the user gave it as long
+		 * as the new screen fits in it, rather than snapping to the
+		 * screen at the zoom size: toggling the borders, or a program
+		 * switching resolution, would otherwise take away the padding
+		 * and with it the monitor frame drawn there.
+		 */
+		SDL_GetWindowSize(sdlWindow, &cur_width, &cur_height);
+		if ((SDL_GetWindowFlags(sdlWindow) & SDL_WINDOW_MAXIMIZED) == 0
+		    && !(!bInFullScreen && (sdlVideoFlags & SDL_WINDOW_RESIZABLE)
+			 && cur_width >= width && cur_height >= height))
 			SDL_SetWindowSize(sdlWindow, win_width, win_height);
 	}
 	else
