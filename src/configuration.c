@@ -91,6 +91,7 @@ static const struct Config_Tag configs_Screen[] =
 	{ "nVdiHeight", Int_Tag, &ConfigureParams.Screen.nVdiHeight },
 	{ "nVdiColors", Int_Tag, &ConfigureParams.Screen.nVdiColors },
 	{ "bMouseWarp", Bool_Tag, &ConfigureParams.Screen.bMouseWarp },
+	{ "nMouseReleaseButton", Int_Tag, &ConfigureParams.Screen.nMouseReleaseButton },
 	{ "bShowStatusOverlay", Bool_Tag, &ConfigureParams.Screen.bShowStatusOverlay },
 	{ "bOverlayDriveLeds", Bool_Tag, &ConfigureParams.Screen.bOverlayDriveLeds },
 	{ "bOverlayFdc", Bool_Tag, &ConfigureParams.Screen.bOverlayFdc },
@@ -826,6 +827,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Screen.nVdiHeight = 480;
 	ConfigureParams.Screen.nVdiColors = GEMCOLOR_16;
 	ConfigureParams.Screen.bMouseWarp = true;
+	ConfigureParams.Screen.nMouseReleaseButton = 3;  /* middle */
 	ConfigureParams.Screen.bShowStatusOverlay = false;
 	ConfigureParams.Screen.bOverlayDriveLeds = false;
 	ConfigureParams.Screen.bOverlayFdc = false;

@@ -103,7 +103,7 @@ static void ShortCut_MouseGrab(void)
 /**
  * Shortcut to release the mouse pointer, whatever state it is in
  */
-static void ShortCut_MouseRelease(void)
+void ShortCut_MouseRelease(void)
 {
 	bGrabMouse = false;
 	Screen_UpdateMouseGrab();

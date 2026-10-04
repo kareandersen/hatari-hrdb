@@ -318,6 +318,7 @@ typedef struct
   bool bOverlayYm;
   bool bOverlayDma;
   bool bMouseWarp;
+  int nMouseReleaseButton;
   bool bCrop;
   bool bForceMax;
   bool bUseExtVdiResolutions;

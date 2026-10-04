@@ -568,6 +568,24 @@ void Main_SetMousePosition(int x, int y)
 
 
 /**
+ * Is this the host mouse button configured to release the pointer?
+ * It is configured the way the buttons are commonly numbered:
+ * 1 left, 2 right, 3 middle, 4 and 5 the side buttons, 0 for none -
+ * SDL has middle and right the other way round.
+ */
+static bool Main_IsMouseReleaseButton(Uint8 button)
+{
+	int wanted = ConfigureParams.Screen.nMouseReleaseButton;
+
+	if (wanted == 2)
+		wanted = SDL_BUTTON_RIGHT;
+	else if (wanted == 3)
+		wanted = SDL_BUTTON_MIDDLE;
+	return wanted > 0 && button == wanted;
+}
+
+
+/**
  * Feed host mouse motion to the IKBD.
  *
  * x,y are the pointer position in frame buffer coordinates (SDL has
@@ -717,7 +735,11 @@ void Main_EventHandler(bool remoteDebugging)
 			break;
 
 		 case SDL_MOUSEBUTTONDOWN:
-			if (event.button.button == SDL_BUTTON_LEFT)
+			if (Main_IsMouseReleaseButton(event.button.button))
+			{
+				ShortCut_MouseRelease();
+			}
+			else if (event.button.button == SDL_BUTTON_LEFT)
 			{
 				if (Keyboard.LButtonDblClk == 0)
 					Keyboard.bLButtonDown |= BUTTON_MOUSE;  /* Set button down flag */
@@ -734,7 +756,11 @@ void Main_EventHandler(bool remoteDebugging)
 			break;
 
 		 case SDL_MOUSEBUTTONUP:
-			if (event.button.button == SDL_BUTTON_LEFT)
+			if (Main_IsMouseReleaseButton(event.button.button))
+			{
+				/* not seen by the Atari, like the press */
+			}
+			else if (event.button.button == SDL_BUTTON_LEFT)
 			{
 				Keyboard.bLButtonDown &= ~BUTTON_MOUSE;
 			}

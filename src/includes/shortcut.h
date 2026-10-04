@@ -11,5 +11,7 @@
 extern bool ShortCut_CheckKeys(int modkey, int symkey, bool press);
 /* Invoke shortcut identified by name */
 extern bool Shortcut_Invoke(const char *shortcut);
+/* Release the mouse pointer, whatever state it is in */
+extern void ShortCut_MouseRelease(void);
 /* Act on the stored keypress (in VBL) */
 extern void ShortCut_ActKey(void);
