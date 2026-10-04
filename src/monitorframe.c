@@ -41,10 +41,7 @@ const char MonitorFrame_fileid[] = "Hatari monitorframe.c";
  * and radii in units of the tube height (uy), so the monitor stretches
  * along with the Atari picture whatever its pixel aspect.
  */
-#define GLASS_RADIUS	0.040f	/* rounded corners of the tube glass */
-#define RIM		0.012f	/* black band between glass and bezel */
-#define OPEN_RADIUS	0.016f	/* inner edge of the bezel wall */
-#define WALL_SIDE	0.026f	/* steep wall from the rim out to the face */
+#define WALL_SIDE	0.026f	/* steep wall from the screen out to the face */
 #define WALL_TOP	0.035f
 #define WALL_BOTTOM	0.016f
 #define WALL_RADIUS	0.024f	/* its rounded outer lip */
@@ -57,7 +54,7 @@ const char MonitorFrame_fileid[] = "Hatari monitorframe.c";
 #define CASE_EDGE	0.008f	/* case sides curving away at the edge */
 #define PLINTH_INSET	0.128f	/* stand under the case, narrower */
 #define PLINTH_HEIGHT	0.120f
-#define LED_RIGHT	0.062f	/* power LED: centre from the glass corner */
+#define LED_RIGHT	0.062f	/* power LED: centre from the opening's corner */
 #define LED_BELOW	0.149f
 #define LED_W		0.023f
 #define LED_H		0.012f
@@ -70,8 +67,6 @@ const char MonitorFrame_fileid[] = "Hatari monitorframe.c";
 #define SHADE_TOP	0.75f, 0.38f
 #define SHADE_BOTTOM	0.95f, 0.78f
 
-#define GLASS_RGB	0x12, 0x1c, 0x18	/* unlit tube, dark green-grey */
-#define RIM_RGB		0x03, 0x03, 0x03
 #define LED_RGB		0x22, 0x96, 0x4e
 #define OUTSIDE_RGB	0x0a, 0x0a, 0x0a	/* beyond the monitor */
 #define BADGE_BLUE	0x00, 0x52, 0x9b
@@ -203,7 +198,7 @@ typedef struct
 	float ux, uy;			/* tube width and height */
 	bool mono;			/* an SM124 rather than an SC1224 */
 	int screen_w, screen_h;
-	rrect_t tube, open, lip, body, plinth, lamp, badge;
+	rrect_t open, lip, body, plinth, lamp, badge;
 	float badge_h, badge_x;
 	SDL_Rect area;			/* all of the monitor */
 } geom_t;
@@ -609,32 +604,28 @@ static void MonitorFrame_Layout(geom_t *g, int screen_w, int screen_h,
 				int display_w, int display_h, bool mono,
 				const SDL_Rect *atari)
 {
-	float ux, uy, cx, cy, margin;
+	float ux, uy;
 	SDL_Rect view;
 
 	g->mono = mono;
 	g->screen_w = screen_w;
 	g->screen_h = screen_h;
 
-	/* the nominal tube, centered on the Atari display */
+	/* the nominal tube, which all of the monitor is sized from: the
+	 * same for any borders, so that the bezel does not change with them
+	 */
 	g->ux = ux = atari->w * TUBE_SCALE_W;
 	g->uy = uy = atari->h * TUBE_SCALE_H;
-	cx = atari->x + atari->w / 2.0f;
-	cy = atari->y + atari->h / 2.0f;
 
-	/* the glass holds the tube, and the whole emulation screen when
-	 * that is larger - with enough room that its rounded corners
-	 * clear the screen's own square corners
+	/* the bezel starts right at the edge of the emulation screen,
+	 * borders or not, with square corners to meet the screen's own:
+	 * it is what shows where the picture ends
 	 */
-	g->tube.rt = g->tube.rb = GLASS_RADIUS * uy;
-	margin = g->tube.rt * 0.3f;
-	g->tube.x0 = fminf(cx - ux / 2, -margin);
-	g->tube.y0 = fminf(cy - uy / 2, -margin);
-	g->tube.x1 = fmaxf(cx + ux / 2, screen_w + margin);
-	g->tube.y1 = fmaxf(cy + uy / 2, screen_h + margin);
-
-	MonitorFrame_Grow(&g->open, &g->tube, RIM * uy, RIM * uy, RIM * uy, RIM * uy);
-	g->open.rt = g->open.rb = OPEN_RADIUS * uy;
+	g->open.x0 = 0;
+	g->open.y0 = 0;
+	g->open.x1 = screen_w;
+	g->open.y1 = screen_h;
+	g->open.rt = g->open.rb = 0;
 	MonitorFrame_Grow(&g->lip, &g->open, WALL_SIDE * ux, WALL_TOP * uy,
 			  WALL_SIDE * ux, WALL_BOTTOM * uy);
 	g->lip.rt = g->lip.rb = WALL_RADIUS * uy;
@@ -649,9 +640,9 @@ static void MonitorFrame_Layout(geom_t *g, int screen_w, int screen_h,
 	g->plinth.y1 = g->body.y1 + PLINTH_HEIGHT * uy;
 	g->plinth.rt = g->plinth.rb = 0;
 
-	g->lamp.x0 = g->tube.x1 - (LED_RIGHT + LED_W / 2) * ux;
+	g->lamp.x0 = g->open.x1 - (LED_RIGHT + LED_W / 2) * ux;
 	g->lamp.x1 = g->lamp.x0 + LED_W * ux;
-	g->lamp.y0 = g->tube.y1 + (LED_BELOW - LED_H / 2) * uy;
+	g->lamp.y0 = g->open.y1 + (LED_BELOW - LED_H / 2) * uy;
 	g->lamp.y1 = g->lamp.y0 + LED_H * uy;
 	g->lamp.rt = g->lamp.rb = LED_H * uy * 0.2f;
 
@@ -697,7 +688,6 @@ static void MonitorFrame_Layout(geom_t *g, int screen_w, int screen_h,
 static Uint32 MonitorFrame_Pixel(const geom_t *g, const float *base, float px, float py,
 				 float dither)
 {
-	const float glass[3] = { GLASS_RGB }, rim[3] = { RIM_RGB };
 	const float led[3] = { LED_RGB }, outside[3] = { OUTSIDE_RGB };
 	const float side[2] = { SHADE_SIDE }, top[2] = { SHADE_TOP };
 	const float bottom[2] = { SHADE_BOTTOM };
@@ -749,7 +739,7 @@ static Uint32 MonitorFrame_Pixel(const geom_t *g, const float *base, float px, f
 	    && (d_lip = MonitorFrame_Dist(&g->lip, px, py, &nx, &ny)) < 0.5f)
 	{
 		d_open = MonitorFrame_Dist(&g->open, px, py, &nx, &ny);
-		/* 0 at the rim, 1 at the face */
+		/* 0 at the screen's edge, 1 at the face */
 		t = d_open > 0 ? d_open / (d_open - fminf(d_lip, 0) + 1e-3f) : 0;
 		wx = nx * nx;
 		wy = ny * ny;
@@ -759,11 +749,6 @@ static Uint32 MonitorFrame_Pixel(const geom_t *g, const float *base, float px, f
 		  + wy * (vert[1] + (vert[0] - vert[1]) * f);
 		MonitorFrame_Shade(col, base, f / (wx + wy));
 		MonitorFrame_Mix(c, col, MonitorFrame_Cover(d_lip));
-
-		/* black band round the tube, then the glass */
-		MonitorFrame_Mix(c, rim, MonitorFrame_Cover(d_open));
-		d = MonitorFrame_Dist(&g->tube, px, py, &nx, &ny);
-		MonitorFrame_Mix(c, glass, MonitorFrame_Cover(d));
 	}
 
 	return 0xff000000u

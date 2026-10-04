@@ -141,17 +141,18 @@ void Screen_ResetPresentStall(void)
 static int Screen_GetIntegerScale(int win_width, int win_height);
 
 /**
- * Draw the monitor frame into the padding around the scaled screen. It
- * covers the whole window, so it goes in first and the screen on top.
+ * Draw the monitor frame into the padding around the scaled screen at
+ * 'screen', in a win_w x win_h render target with no logical size set.
+ * It goes in first, and the screen on top.
  */
-static void Screen_DrawMonitorFrame(void)
+static void Screen_DrawMonitorFrame(int win_w, int win_h, const SDL_Rect *screen, int scale)
 {
-	SDL_Rect screen, atari;
+	SDL_Rect atari;
 	SDL_DisplayMode mode;
-	int win_w, win_h, scale, atari_w, atari_h, disp_w, disp_h, w, h;
+	int atari_w, atari_h, disp_w, disp_h, w, h;
 
-	if (SDL_GetRendererOutputSize(sdlRenderer, &win_w, &win_h) != 0)
-		return;
+	if (screen->x <= 0 && screen->y <= 0)
+		return;		/* no padding to fill */
 
 	/* the largest the window can get: the display it is on, in the
 	 * renderer's pixels, which differ from the window's own on a
@@ -173,32 +174,20 @@ static void Screen_DrawMonitorFrame(void)
 	if (disp_h < win_h)
 		disp_h = win_h;
 
-	/* where the renderer puts the screen: whole-number scaled and
-	 * centered
-	 */
-	scale = Screen_GetIntegerScale(win_w, win_h);
-	screen.w = sdlscrn->w * scale;
-	screen.h = sdlscrn->h * scale;
-	screen.x = (win_w - screen.w) / 2;
-	screen.y = (win_h - screen.h) / 2;
-	if (screen.x <= 0 && screen.y <= 0)
-		return;		/* no padding to fill */
-
 	Screen_GetAtariArea(&atari, &atari_w, &atari_h);
-	atari.x = screen.x + atari.x * scale;
-	atari.y = screen.y + atari.y * scale;
+	atari.x = screen->x + atari.x * scale;
+	atari.y = screen->y + atari.y * scale;
 	atari.w *= scale;
 	atari.h *= scale;
 
-	/* the logical size confines drawing to the scaled screen */
-	SDL_RenderSetLogicalSize(sdlRenderer, 0, 0);
-	MonitorFrame_Draw(sdlRenderer, win_w, win_h, disp_w, disp_h, &screen, &atari);
-	SDL_RenderSetLogicalSize(sdlRenderer, sdlscrn->w, sdlscrn->h);
+	MonitorFrame_Draw(sdlRenderer, win_w, win_h, disp_w, disp_h, screen, &atari);
 }
 
 void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 {
 	uint32_t ticks;
+	SDL_Rect dst;
+	int win_w, win_h, scale;
 
 	/* Only bypass throttled presents while someone is actually watching
 	 * remotely; otherwise let the compositor throttle us as usual, which
@@ -227,21 +216,38 @@ void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 		 * certain accelerated cards need.
 		 */
 		SDL_RenderClear(sdlRenderer);
-		if (ConfigureParams.Screen.bMonitorFrame)
-			Screen_DrawMonitorFrame();
-		SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+		if (SDL_GetRendererOutputSize(sdlRenderer, &win_w, &win_h) == 0)
+		{
+			/* Place the screen here rather than leave it to the
+			 * renderer's logical size: SDL3 centers it on a half
+			 * pixel at times, and what goes around it - the
+			 * monitor frame and the status overlay in the padding -
+			 * has to meet it exactly.  The logical size, which
+			 * also confines drawing to the scaled screen, is put
+			 * back for the next frame and for mapping the mouse.
+			 */
+			scale = Screen_GetIntegerScale(win_w, win_h);
+			dst.w = sdlscrn->w * scale;
+			dst.h = sdlscrn->h * scale;
+			dst.x = (win_w - dst.w) / 2;
+			dst.y = (win_h - dst.h) / 2;
+			SDL_RenderSetLogicalSize(sdlRenderer, 0, 0);
+			if (ConfigureParams.Screen.bMonitorFrame)
+				Screen_DrawMonitorFrame(win_w, win_h, &dst, scale);
+			SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, &dst);
+		}
+		else
+		{
+			SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
+			SDL_RenderSetLogicalSize(sdlRenderer, 0, 0);
+		}
 		if (sdlOverlay && ConfigureParams.Screen.bShowStatusOverlay)
 		{
 			SDL_UpdateTexture(sdlOverlayTexture, NULL,
 					  sdlOverlay->pixels, sdlOverlay->pitch);
-			/* the logical size confines drawing to the scaled
-			 * Atari screen, so drop it to reach the padding,
-			 * then put it back for the next frame
-			 */
-			SDL_RenderSetLogicalSize(sdlRenderer, 0, 0);
 			SDL_RenderCopy(sdlRenderer, sdlOverlayTexture, NULL, &sdlOverlayRect);
-			SDL_RenderSetLogicalSize(sdlRenderer, sdlscrn->w, sdlscrn->h);
 		}
+		SDL_RenderSetLogicalSize(sdlRenderer, sdlscrn->w, sdlscrn->h);
 		SDL_RenderPresent(sdlRenderer);
 	}
 	else
