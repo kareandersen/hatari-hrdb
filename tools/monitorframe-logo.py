@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""
+Generate src/monitorframe_logo.h: the Fuji symbol, the ATARI lettering
+and the SC of SC1224 on the name plate of the SC1224 monitor frame, as
+polygon outlines taken from the SF Atarian System fonts, which have the
+Fuji on U+002A. The figures of the font are not the ones on the plate,
+so those are drawn by monitorframe.c itself.
+
+Usage: monitorframe-logo.py <font directory> > src/monitorframe_logo.h
+
+The directory has to hold SF_Atarian_System_Bold.ttf and
+SF_Atarian_System_Extended_Bold.ttf. Needs fontTools.
+
+Coordinates are in units of the cap height, y down from the top of the
+capitals. Spacing and widths are adjusted to match the plate on a real
+SC1224. Each glyph is listed with its left and right ink edges, so that
+monitorframe.c can line them up with the pixel grid one by one.
+"""
+import os
+import sys
+from fontTools.ttLib import TTFont
+from fontTools.pens.basePen import BasePen
+
+CURVE_STEPS = 6		# line segments per curve
+
+# what to take from which font: name, font file, text, horizontal scale,
+# the extra space between letters, and how far to move the parts left
+# and right of a glyph's middle outwards, both in cap heights - the
+# Fuji on the plate stands wider than the one in the font
+OUTLINES = (
+    ("logo_fuji", "SF_Atarian_System_Bold.ttf", "*", 1.0, 0, 0.09),
+    ("logo_atari", "SF_Atarian_System_Bold.ttf", "ATARI", 1.15, 0.03, 0),
+    ("logo_sc", "SF_Atarian_System_Extended_Bold.ttf", "SC", 0.85, -0.04, 0),
+)
+
+
+class FlattenPen(BasePen):
+    """Collect glyph contours, with curves flattened into line segments"""
+    def __init__(self, glyphset):
+        super().__init__(glyphset)
+        self.contours = []
+
+    def _moveTo(self, p):
+        self.contours.append([p])
+
+    def _lineTo(self, p):
+        self.contours[-1].append(p)
+
+    def _qCurveToOne(self, p1, p2):
+        p0 = self.contours[-1][-1]
+        for i in range(1, CURVE_STEPS + 1):
+            t = i / CURVE_STEPS
+            a, b, c = (1 - t) ** 2, 2 * (1 - t) * t, t * t
+            self.contours[-1].append((a * p0[0] + b * p1[0] + c * p2[0],
+                                      a * p0[1] + b * p1[1] + c * p2[1]))
+
+    def _curveToOne(self, p1, p2, p3):
+        p0 = self.contours[-1][-1]
+        for i in range(1, CURVE_STEPS + 1):
+            t = i / CURVE_STEPS
+            a, b = (1 - t) ** 3, 3 * (1 - t) ** 2 * t
+            c, d = 3 * (1 - t) * t * t, t ** 3
+            self.contours[-1].append(
+                (a * p0[0] + b * p1[0] + c * p2[0] + d * p3[0],
+                 a * p0[1] + b * p1[1] + c * p2[1] + d * p3[1]))
+
+    def _closePath(self):
+        if len(self.contours[-1]) > 1 and self.contours[-1][0] == self.contours[-1][-1]:
+            self.contours[-1].pop()
+
+    _endPath = _closePath
+
+
+def spread(contours, amount):
+    """Move the contours left and right of the middle apart"""
+    xs = [p[0] for c in contours for p in c]
+    middle = (min(xs) + max(xs)) / 2
+    out = []
+    for c in contours:
+        cx = sum(p[0] for p in c) / len(c)
+        dx = 0 if abs(cx - middle) < (max(xs) - min(xs)) * 0.1 else \
+            (amount if cx > middle else -amount)
+        out.append([(px + dx, py) for px, py in c])
+    return out
+
+
+def outline(font, text, scale, tracking, apart):
+    """Contours of each glyph of 'text', in cap heights, from the left
+    ink edge of the text"""
+    glyphset = font.getGlyphSet()
+    cmap = font.getBestCmap()
+    hmtx = font['hmtx']
+    cap = font['glyf']['H'].yMax if 'H' in font['glyf'] else font['head'].unitsPerEm * 0.7
+    glyphs = []
+    x = 0
+    for ch in text:
+        name = cmap[ord(ch)]
+        pen = FlattenPen(glyphset)
+        glyphset[name].draw(pen)
+        contours = spread(pen.contours, apart * cap) if apart else pen.contours
+        glyphs.append([[((px + x) * scale, py) for px, py in c] for c in contours])
+        x += hmtx[name][0] + tracking * cap / scale
+    left = min(p[0] for g in glyphs for c in g for p in c)
+    return [[[((px - left) / cap, (cap - py) / cap) for px, py in c] for c in g]
+            for g in glyphs]
+
+
+def emit(name, glyphs):
+    """Points of all glyphs, the size of each contour, and per glyph its
+    first point and contour, number of contours, and ink edges"""
+    contours = [c for g in glyphs for c in g]
+    print(f"static const float {name}_points[][2] = {{")
+    for c in contours:
+        print("\t" + " ".join(f"{{{x:.4f}f,{y:.4f}f}}," for x, y in c))
+    print("};")
+    print(f"static const unsigned short {name}_contours[] = {{ "
+          + ", ".join(str(len(c)) for c in contours) + " };")
+    print(f"static const logo_glyph_t {name}_glyphs[] = {{")
+    point = contour = 0
+    for g in glyphs:
+        xs = [p[0] for c in g for p in c]
+        print(f"\t{{ {point}, {contour}, {len(g)}, {min(xs):.4f}f, {max(xs):.4f}f }},")
+        point += sum(len(c) for c in g)
+        contour += len(g)
+    print("};\n")
+
+
+def main():
+    if len(sys.argv) != 2:
+        sys.exit(__doc__)
+    print("/* Generated by tools/monitorframe-logo.py from SF Atarian System */\n")
+    for name, fontfile, text, scale, tracking, apart in OUTLINES:
+        font = TTFont(os.path.join(sys.argv[1], fontfile))
+        emit(name, outline(font, text, scale, tracking, apart))
+
+
+if __name__ == "__main__":
+    main()

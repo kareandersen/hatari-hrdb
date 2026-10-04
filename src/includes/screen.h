@@ -83,6 +83,9 @@ enum
 
 
 extern bool bGrabMouse;
+
+/* colour of the monitor case around the screen: SC1224 moss grey */
+#define SCREEN_FRAME_COLOR_DEFAULT "#B4B7AF"
 extern void Screen_UpdateMouseGrab(void);
 extern int Screen_GetHostScale(void);
 extern void Screen_GetAtariArea(SDL_Rect *pArea, int *pWidth, int *pHeight);

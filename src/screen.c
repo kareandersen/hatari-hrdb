@@ -35,6 +35,7 @@ const char Screen_fileid[] = "Hatari screen.c";
 #include "avi_record.h"
 #include "file.h"
 #include "log.h"
+#include "monitorframe.h"
 #include "paths.h"
 #include "options.h"
 #include "screen.h"
@@ -137,6 +138,64 @@ void Screen_ResetPresentStall(void)
 	bPresentStalled = false;
 }
 
+static int Screen_GetIntegerScale(int win_width, int win_height);
+
+/**
+ * Draw the monitor frame into the padding around the scaled screen. It
+ * covers the whole window, so it goes in first and the screen on top.
+ */
+static void Screen_DrawMonitorFrame(void)
+{
+	SDL_Rect screen, atari;
+	SDL_DisplayMode mode;
+	int win_w, win_h, scale, atari_w, atari_h, disp_w, disp_h, w, h;
+
+	if (SDL_GetRendererOutputSize(sdlRenderer, &win_w, &win_h) != 0)
+		return;
+
+	/* the largest the window can get: the display it is on, in the
+	 * renderer's pixels, which differ from the window's own on a
+	 * scaled (HiDPI) display
+	 */
+	disp_w = win_w;
+	disp_h = win_h;
+	if (SDL_GetDesktopDisplayMode(SDL_GetWindowDisplayIndex(sdlWindow), &mode) == 0)
+	{
+		SDL_GetWindowSize(sdlWindow, &w, &h);
+		if (w > 0 && h > 0)
+		{
+			disp_w = mode.w * win_w / w;
+			disp_h = mode.h * win_h / h;
+		}
+	}
+	if (disp_w < win_w)
+		disp_w = win_w;
+	if (disp_h < win_h)
+		disp_h = win_h;
+
+	/* where the renderer puts the screen: whole-number scaled and
+	 * centered
+	 */
+	scale = Screen_GetIntegerScale(win_w, win_h);
+	screen.w = sdlscrn->w * scale;
+	screen.h = sdlscrn->h * scale;
+	screen.x = (win_w - screen.w) / 2;
+	screen.y = (win_h - screen.h) / 2;
+	if (screen.x <= 0 && screen.y <= 0)
+		return;		/* no padding to fill */
+
+	Screen_GetAtariArea(&atari, &atari_w, &atari_h);
+	atari.x = screen.x + atari.x * scale;
+	atari.y = screen.y + atari.y * scale;
+	atari.w *= scale;
+	atari.h *= scale;
+
+	/* the logical size confines drawing to the scaled screen */
+	SDL_RenderSetLogicalSize(sdlRenderer, 0, 0);
+	MonitorFrame_Draw(sdlRenderer, win_w, win_h, disp_w, disp_h, &screen, &atari);
+	SDL_RenderSetLogicalSize(sdlRenderer, sdlscrn->w, sdlscrn->h);
+}
+
 void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 {
 	uint32_t ticks;
@@ -168,6 +227,8 @@ void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 		 * certain accelerated cards need.
 		 */
 		SDL_RenderClear(sdlRenderer);
+		if (ConfigureParams.Screen.bMonitorFrame)
+			Screen_DrawMonitorFrame();
 		SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, NULL);
 		if (sdlOverlay && ConfigureParams.Screen.bShowStatusOverlay)
 		{
@@ -343,6 +404,7 @@ static void Screen_FreeSDL2Resources(void)
 		SDL_DestroyTexture(sdlOverlayTexture);
 		sdlOverlayTexture = NULL;
 	}
+	MonitorFrame_Free();
 	if (sdlOverlay)
 	{
 		SDL_FreeSurface(sdlOverlay);
@@ -781,7 +843,8 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 		/* Keep Atari pixels square in every mode: the renderer picks
 		 * the largest whole-number scale that fits the window and
 		 * centers the result, and the leftover area stays at the
-		 * black draw colour set below.
+		 * black draw colour set below - unless the monitor frame
+		 * is drawn over it.
 		 */
 		SDL_RenderSetLogicalSize(sdlRenderer, width, height);
 #if SDL_VERSION_ATLEAST(2, 0, 5)

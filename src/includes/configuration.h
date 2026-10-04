@@ -318,6 +318,7 @@ typedef struct
   bool bOverlayYm;
   bool bOverlayDma;
   bool bMouseWarp;
+  bool bMonitorFrame;
   int nMouseReleaseButton;
   bool bCrop;
   bool bForceMax;
@@ -329,6 +330,7 @@ typedef struct
   bool bUseSdlRenderer;
   int ScreenShotFormat;
   char szScreenShotDir[FILENAME_MAX];
+  char szMonitorFrameColor[FILENAME_MAX];
   float nZoomFactor;
   int nSpec512Threshold;
   int nVdiColors;

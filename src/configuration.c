@@ -92,6 +92,8 @@ static const struct Config_Tag configs_Screen[] =
 	{ "nVdiColors", Int_Tag, &ConfigureParams.Screen.nVdiColors },
 	{ "bMouseWarp", Bool_Tag, &ConfigureParams.Screen.bMouseWarp },
 	{ "nMouseReleaseButton", Int_Tag, &ConfigureParams.Screen.nMouseReleaseButton },
+	{ "bMonitorFrame", Bool_Tag, &ConfigureParams.Screen.bMonitorFrame },
+	{ "szMonitorFrameColor", String_Tag, ConfigureParams.Screen.szMonitorFrameColor },
 	{ "bShowStatusOverlay", Bool_Tag, &ConfigureParams.Screen.bShowStatusOverlay },
 	{ "bOverlayDriveLeds", Bool_Tag, &ConfigureParams.Screen.bOverlayDriveLeds },
 	{ "bOverlayFdc", Bool_Tag, &ConfigureParams.Screen.bOverlayFdc },
@@ -828,6 +830,8 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Screen.nVdiColors = GEMCOLOR_16;
 	ConfigureParams.Screen.bMouseWarp = true;
 	ConfigureParams.Screen.nMouseReleaseButton = 3;  /* middle */
+	ConfigureParams.Screen.bMonitorFrame = true;
+	strcpy(ConfigureParams.Screen.szMonitorFrameColor, SCREEN_FRAME_COLOR_DEFAULT);
 	ConfigureParams.Screen.bShowStatusOverlay = false;
 	ConfigureParams.Screen.bOverlayDriveLeds = false;
 	ConfigureParams.Screen.bOverlayFdc = false;
