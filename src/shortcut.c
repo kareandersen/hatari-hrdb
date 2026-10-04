@@ -101,6 +101,25 @@ static void ShortCut_MouseGrab(void)
 
 /*-----------------------------------------------------------------------*/
 /**
+ * Shortcut to toggle the scanline grille over the screen
+ */
+static void ShortCut_Scanlines(void)
+{
+	bool shown = ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_RGB
+		|| ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_TV;
+
+	ConfigureParams.Screen.bScanlineGrille = !ConfigureParams.Screen.bScanlineGrille;
+	if (!ConfigureParams.Screen.bScanlineGrille)
+		Statusbar_AddMessage("Scanlines off", 500);
+	else if (shown)
+		Statusbar_AddMessage("Scanlines on", 500);
+	else
+		Statusbar_AddMessage("Scanlines on (RGB and TV monitors only)", 1000);
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
  * Shortcut to release the mouse pointer, whatever state it is in
  */
 void ShortCut_MouseRelease(void)
@@ -316,6 +335,9 @@ void ShortCut_ActKey(void)
 	 case SHORTCUT_MOUSERELEASE:
 		ShortCut_MouseRelease();
 		break;
+	 case SHORTCUT_SCANLINES:
+		ShortCut_Scanlines();
+		break;
 	 case SHORTCUT_STATUSOVERLAY:
 		ShortCut_StatusOverlay();
 		break;
@@ -418,6 +440,7 @@ bool Shortcut_Invoke(const char *shortcut)
 		{ SHORTCUT_QUIT, "quit" },
 		{ SHORTCUT_STATUSOVERLAY, "statusoverlay" },
 		{ SHORTCUT_MOUSERELEASE, "mouserelease" },
+		{ SHORTCUT_SCANLINES, "scanlines" },
 		{ SHORTCUT_NONE, NULL }
 	};
 	int i;

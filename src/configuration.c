@@ -93,6 +93,7 @@ static const struct Config_Tag configs_Screen[] =
 	{ "bMouseWarp", Bool_Tag, &ConfigureParams.Screen.bMouseWarp },
 	{ "nMouseReleaseButton", Int_Tag, &ConfigureParams.Screen.nMouseReleaseButton },
 	{ "bMonitorFrame", Bool_Tag, &ConfigureParams.Screen.bMonitorFrame },
+	{ "bScanlineGrille", Bool_Tag, &ConfigureParams.Screen.bScanlineGrille },
 	{ "szMonitorFrameColor", String_Tag, ConfigureParams.Screen.szMonitorFrameColor },
 	{ "bShowStatusOverlay", Bool_Tag, &ConfigureParams.Screen.bShowStatusOverlay },
 	{ "bOverlayDriveLeds", Bool_Tag, &ConfigureParams.Screen.bOverlayDriveLeds },
@@ -304,6 +305,7 @@ static const struct Config_Tag configs_ShortCutWithMod[] =
 	{ "kSwitchPadB", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_PAD_B] },
 	{ "kStatusOverlay", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_STATUSOVERLAY] },
 	{ "kMouseRelease", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_MOUSERELEASE] },
+	{ "kScanlines", Key_Tag, &ConfigureParams.Shortcut.withModifier[SHORTCUT_SCANLINES] },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -335,6 +337,7 @@ static const struct Config_Tag configs_ShortCutWithoutMod[] =
 	{ "kSwitchPadB", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_PAD_B] },
 	{ "kStatusOverlay", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_STATUSOVERLAY] },
 	{ "kMouseRelease", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_MOUSERELEASE] },
+	{ "kScanlines", Key_Tag, &ConfigureParams.Shortcut.withoutModifier[SHORTCUT_SCANLINES] },
 	{ NULL , Error_Tag, NULL }
 };
 
@@ -771,6 +774,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_INSERTDISKA] = SDLK_d;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_STATUSOVERLAY] = SDLK_h;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_MOUSERELEASE] = SDLK_ESCAPE;
+	ConfigureParams.Shortcut.withModifier[SHORTCUT_SCANLINES] = SDLK_t;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_JOY_0] = SDLK_F1;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_JOY_1] = SDLK_F2;
 	ConfigureParams.Shortcut.withModifier[SHORTCUT_PAD_A] = SDLK_F3;
@@ -831,6 +835,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Screen.bMouseWarp = true;
 	ConfigureParams.Screen.nMouseReleaseButton = 3;  /* middle */
 	ConfigureParams.Screen.bMonitorFrame = true;
+	ConfigureParams.Screen.bScanlineGrille = false;
 	strcpy(ConfigureParams.Screen.szMonitorFrameColor, SCREEN_FRAME_COLOR_DEFAULT);
 	ConfigureParams.Screen.bShowStatusOverlay = false;
 	ConfigureParams.Screen.bOverlayDriveLeds = false;

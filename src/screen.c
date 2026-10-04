@@ -123,6 +123,10 @@ static SDL_Texture *sdlTexture;
 static SDL_Surface *sdlOverlay;
 static SDL_Texture *sdlOverlayTexture;
 static SDL_Rect sdlOverlayRect;         /* its place in the window */
+/* scanlines and aperture grille, multiplied over the scaled screen */
+static SDL_Texture *sdlGrilleTexture;
+static int nGrilleWidth, nGrilleHeight, nGrilleLine, nGrillePixel;
+static bool bRendererAccelerated;       /* only then is the grille drawn */
 static bool bUseSdlRenderer;            /* true when using SDL2 renderer */
 static bool bPrevUseVsync = false;      /* vsync setting given to SDL */
 
@@ -183,6 +187,80 @@ static void Screen_DrawMonitorFrame(int win_w, int win_h, const SDL_Rect *screen
 	MonitorFrame_Draw(sdlRenderer, win_w, win_h, disp_w, disp_h, screen, &atari);
 }
 
+/**
+ * Darken the scaled screen at 'screen' the way a CRT's scanlines and
+ * aperture grille do: each Atari line bright in its middle and dark
+ * at its edges, and each column of host pixels behind a red, green or
+ * blue stripe.  The pattern is made once for the screen's size and
+ * scale, lined up with the Atari pixels, and multiplied over the
+ * screen by the GPU each frame - as a shader would, which the SDL
+ * renderer has no way to take.
+ */
+static void Screen_DrawGrille(const SDL_Rect *screen, int scale)
+{
+	/* how dark the gap between lines gets, and what the other two
+	 * colours of a stripe keep */
+	const float depth = 0.40f, stripe = 0.82f;
+	int line = scale * nScreenZoomY;	/* host rows per Atari line */
+	int pixel = scale * nScreenZoomX;	/* host columns per Atari pixel */
+	Uint32 *pixels;
+	float b, t, rgb[3];
+	int x, y, c;
+
+	if (!sdlGrilleTexture || nGrilleWidth != screen->w || nGrilleHeight != screen->h
+	    || nGrilleLine != line || nGrillePixel != pixel)
+	{
+		if (sdlGrilleTexture)
+			SDL_DestroyTexture(sdlGrilleTexture);
+		sdlGrilleTexture = SDL_CreateTexture(sdlRenderer, SDL_PIXELFORMAT_ARGB8888,
+						     SDL_TEXTUREACCESS_STATIC,
+						     screen->w, screen->h);
+		pixels = malloc((size_t)screen->w * screen->h * sizeof(*pixels));
+		if (!sdlGrilleTexture || !pixels)
+		{
+			free(pixels);
+			if (sdlGrilleTexture)
+				SDL_DestroyTexture(sdlGrilleTexture);
+			sdlGrilleTexture = NULL;
+			return;
+		}
+		for (y = 0; y < screen->h; y++)
+		{
+			/* too few rows per line for a gap between them, or just
+			 * enough for a dark row below each, or a smooth profile */
+			if (line < 2)
+				b = 1;
+			else if (line == 2)
+				b = (y & 1) ? 1 - depth : 1;
+			else
+			{
+				t = 2 * ((y % line) + 0.5f) / line - 1;
+				b = 1 - depth * t * t;
+			}
+			for (x = 0; x < screen->w; x++)
+			{
+				/* stripes only where an Atari pixel spans a whole
+				 * red, green and blue triad, or they just beat with
+				 * the pixels */
+				for (c = 0; c < 3; c++)
+					rgb[c] = (pixel < 3 || x % 3 == c) ? b : b * stripe;
+				pixels[(size_t)y * screen->w + x] = 0xff000000u
+					| (Uint32)(rgb[0] * 255 + 0.5f) << 16
+					| (Uint32)(rgb[1] * 255 + 0.5f) << 8
+					| (Uint32)(rgb[2] * 255 + 0.5f);
+			}
+		}
+		SDL_UpdateTexture(sdlGrilleTexture, NULL, pixels, screen->w * sizeof(*pixels));
+		free(pixels);
+		SDL_SetTextureBlendMode(sdlGrilleTexture, SDL_BLENDMODE_MOD);
+		nGrilleWidth = screen->w;
+		nGrilleHeight = screen->h;
+		nGrilleLine = line;
+		nGrillePixel = pixel;
+	}
+	SDL_RenderCopy(sdlRenderer, sdlGrilleTexture, NULL, screen);
+}
+
 void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 {
 	uint32_t ticks;
@@ -235,6 +313,12 @@ void Screen_UpdateRects(SDL_Surface *screen, int numrects, SDL_Rect *rects)
 			if (ConfigureParams.Screen.bMonitorFrame)
 				Screen_DrawMonitorFrame(win_w, win_h, &dst, scale);
 			SDL_RenderCopy(sdlRenderer, sdlTexture, NULL, &dst);
+			/* only colour TV-frequency monitors: the mono and VGA
+			 * ones scan too finely for lines or stripes to show */
+			if (ConfigureParams.Screen.bScanlineGrille && bRendererAccelerated
+			    && (ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_RGB
+				|| ConfigureParams.Screen.nMonitorType == MONITOR_TYPE_TV))
+				Screen_DrawGrille(&dst, scale);
 		}
 		else
 		{
@@ -409,6 +493,11 @@ static void Screen_FreeSDL2Resources(void)
 	{
 		SDL_DestroyTexture(sdlOverlayTexture);
 		sdlOverlayTexture = NULL;
+	}
+	if (sdlGrilleTexture)
+	{
+		SDL_DestroyTexture(sdlGrilleTexture);
+		sdlGrilleTexture = NULL;
 	}
 	MonitorFrame_Free();
 	if (sdlOverlay)
@@ -855,6 +944,12 @@ static bool Screen_SetSDLVideoSize(int width, int height, bool bForceChange)
 		{
 			fprintf(stderr, "%dx%d renderer\n", win_width, win_height);
 			Main_ErrorExit("Failed to create renderer:", SDL_GetError(), 1);
+		}
+		{
+			SDL_RendererInfo info;
+
+			bRendererAccelerated = SDL_GetRendererInfo(sdlRenderer, &info) == 0
+				&& (info.flags & SDL_RENDERER_ACCELERATED);
 		}
 
 		/* Keep Atari pixels square in every mode: the renderer picks

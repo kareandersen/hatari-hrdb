@@ -91,7 +91,10 @@ static char *sc_names[SHORTCUT_KEYS] = {
 	"Toggle joystick 0",
 	"Toggle joystick 1",
 	"Toggle joypad A",
-	"Toggle joypad B"
+	"Toggle joypad B",
+	"Toggle status overlay",
+	"Release mouse",
+	"Toggle scanlines"
 };
 
 static char sScKeyType[28];

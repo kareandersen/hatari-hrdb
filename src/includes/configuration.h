@@ -141,6 +141,7 @@ typedef enum {
   SHORTCUT_PAD_B,
   SHORTCUT_STATUSOVERLAY,
   SHORTCUT_MOUSERELEASE,
+  SHORTCUT_SCANLINES,
   SHORTCUT_KEYS,  /* number of shortcuts */
   SHORTCUT_NONE
 } SHORTCUTKEYIDX;
@@ -319,6 +320,7 @@ typedef struct
   bool bOverlayDma;
   bool bMouseWarp;
   bool bMonitorFrame;
+  bool bScanlineGrille;
   int nMouseReleaseButton;
   bool bCrop;
   bool bForceMax;

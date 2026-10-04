@@ -37,17 +37,18 @@ const char DlgScreen_fileid[] = "Hatari dlgScreen.c";
 #define DLGSCRN_VGA          5
 #define DLGSCRN_TV           6
 #define DLGSCRN_OVERSCAN     7
-#define DLGSCRN_USEVDIRES    9
-#define DLGSCRN_VDI_WLESS    11
-#define DLGSCRN_VDI_WTEXT    12
-#define DLGSCRN_VDI_WMORE    13
-#define DLGSCRN_VDI_HLESS    15
-#define DLGSCRN_VDI_HTEXT    16
-#define DLGSCRN_VDI_HMORE    17
-#define DLGSCRN_BPP1         18
-#define DLGSCRN_BPP2         19
-#define DLGSCRN_BPP4         20
-#define DLGSCRN_EXIT_MONITOR 21
+#define DLGSCRN_SCANLINES    8
+#define DLGSCRN_USEVDIRES    10
+#define DLGSCRN_VDI_WLESS    12
+#define DLGSCRN_VDI_WTEXT    13
+#define DLGSCRN_VDI_WMORE    14
+#define DLGSCRN_VDI_HLESS    16
+#define DLGSCRN_VDI_HTEXT    17
+#define DLGSCRN_VDI_HMORE    18
+#define DLGSCRN_BPP1         19
+#define DLGSCRN_BPP2         20
+#define DLGSCRN_BPP4         21
+#define DLGSCRN_EXIT_MONITOR 22
 
 /* Strings for VDI resolution width and height */
 static char sVdiWidth[5];
@@ -63,7 +64,8 @@ static SGOBJ monitordlg[] =
 	{ SGRADIOBUT, 0, 0, 12,3,  5,1, "_RGB" },
 	{ SGRADIOBUT, 0, 0, 19,3,  5,1, "_VGA" },
 	{ SGRADIOBUT, 0, 0, 26,3,  4,1, "_TV" },
-	{ SGCHECKBOX, 0, 0, 12,5, 14,1, "Show _borders" },
+	{ SGCHECKBOX, 0, 0,  4,5, 14,1, "Show _borders" },
+	{ SGCHECKBOX, 0, 0, 20,5, 11,1, "Scan_lines" },
 
 	{ SGBOX,      0, 0,  1,8, 32,7, NULL },
 	{ SGCHECKBOX, 0, 0,  4,9, 25,1, "Use _extended VDI screen" },
@@ -226,6 +228,10 @@ void Dialog_MonitorDlg(void)
 		monitordlg[DLGSCRN_OVERSCAN].state |= SG_SELECTED;
 	else
 		monitordlg[DLGSCRN_OVERSCAN].state &= ~SG_SELECTED;
+	if (ConfigureParams.Screen.bScanlineGrille)
+		monitordlg[DLGSCRN_SCANLINES].state |= SG_SELECTED;
+	else
+		monitordlg[DLGSCRN_SCANLINES].state &= ~SG_SELECTED;
 
 	for (i = DLGSCRN_MONO; i <= DLGSCRN_TV; i++)
 		monitordlg[i].state &= ~SG_SELECTED;
@@ -294,6 +300,7 @@ void Dialog_MonitorDlg(void)
 	/* Read new values from dialog: */
 
 	ConfigureParams.Screen.bAllowOverscan = (monitordlg[DLGSCRN_OVERSCAN].state & SG_SELECTED);
+	ConfigureParams.Screen.bScanlineGrille = (monitordlg[DLGSCRN_SCANLINES].state & SG_SELECTED);
 
 	for (mti = MONITOR_TYPE_MONO; mti <= MONITOR_TYPE_TV; mti++)
 	{
