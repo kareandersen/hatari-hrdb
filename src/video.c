@@ -4268,9 +4268,14 @@ static void Video_CopyScreenLineColor(void)
 				/*
 				 * Handle the last 16 pixels of the line after the shift to the left :
 				 * - if this is a 224 byte STE overscan line, then the last 8 pixels to the extreme right should be displayed
-				 * - for other cases (230 byte overscan), "entering" pixels to the extreme right should be set to color 0
+				 * - if the right border is open (230 byte overscan), the line goes on past what was copied, and
+				 *   the "entering" pixels are the next ones from it : the left border removal moves the whole
+				 *   line to the left, it does not blank its end. Without borders shown, these are the last
+				 *   pixels of the screen, which were left in color 0 before.
+				 * - for other cases, "entering" pixels to the extreme right should be set to color 0
 				 */
-				if (LineBorderMask & BORDERMASK_LEFT_OFF_2_STE)
+				if ( (LineBorderMask & BORDERMASK_LEFT_OFF_2_STE)
+				    || (LineBorderMask & BORDERMASK_RIGHT_OFF) )
 				{
 					/* This is one can be complicated, because we can have STE scroll to the left + the global */
 					/* 8 pixel left scroll added when using a 224 bytes overscan line. We use extra_word to fetch */
@@ -4300,9 +4305,10 @@ static void Video_CopyScreenLineColor(void)
 					do_put_mem_word ( pScreenLineStart , ( ( do_get_mem_word ( pScreenLineStart ) << STF_PixelScroll )
 						| ( do_get_mem_word ( pScreenLineStart + 2 ) >> (16-STF_PixelScroll) ) ) );
 
-				/* Handle the last 16 pixels of the line */
+				/* Handle the last 16 pixels of the line (see low res above) */
 				if ( (LineBorderMask & BORDERMASK_LEFT_OFF_2_STE)
-				    || (LineBorderMask & BORDERMASK_LEFT_OFF_2_STE_MED) )
+				    || (LineBorderMask & BORDERMASK_LEFT_OFF_2_STE_MED)
+				    || (LineBorderMask & BORDERMASK_RIGHT_OFF) )
 				{
 					for ( i=0 ; i<2 ; i++ )
 					{
