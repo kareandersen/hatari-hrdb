@@ -76,6 +76,15 @@ extern long nf_debugger(void);
 extern long nf_fastforward(long enabled);
 
 /**
+ * give the CPU time from now on to a section of the program's work,
+ * for the CPU meter in the status overlay: 0 for free time, 1 and up
+ * for the parts of a frame, each shown in its own color
+ * (Hatari specific)
+ * returns previous section, e.g. for an interrupt handler to restore
+ */
+extern long nf_cpumeter(long section);
+
+/**
  * terminate the execution of the emulation if possible
  * (runs in supervisor mode)
  */

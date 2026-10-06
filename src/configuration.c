@@ -104,6 +104,7 @@ static const struct Config_Tag configs_Screen[] =
 	{ "bOverlayMessages", Bool_Tag, &ConfigureParams.Screen.bOverlayMessages },
 	{ "bOverlayYm", Bool_Tag, &ConfigureParams.Screen.bOverlayYm },
 	{ "bOverlayDma", Bool_Tag, &ConfigureParams.Screen.bOverlayDma },
+	{ "bOverlayCpuMeter", Bool_Tag, &ConfigureParams.Screen.bOverlayCpuMeter },
 	{ "bCrop", Bool_Tag, &ConfigureParams.Screen.bCrop },
 	{ "bForceMax", Bool_Tag, &ConfigureParams.Screen.bForceMax },
 	{ "nMaxWidth", Int_Tag, &ConfigureParams.Screen.nMaxWidth },
@@ -846,6 +847,7 @@ void Configuration_SetDefault(void)
 	ConfigureParams.Screen.bOverlayMessages = true;
 	ConfigureParams.Screen.bOverlayYm = true;
 	ConfigureParams.Screen.bOverlayDma = true;
+	ConfigureParams.Screen.bOverlayCpuMeter = true;
 	ConfigureParams.Screen.bCrop = false;
 	/* use approximately similar Hatari framebuffer/window size
 	 * on all resolutions (like real Atari monitor would do) by

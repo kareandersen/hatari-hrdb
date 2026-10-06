@@ -22,6 +22,7 @@ const char Natfeats_fileid[] = "Hatari natfeats.c";
 #include "debugui.h"
 #include "statusbar.h"
 #include "nf_scsidrv.h"
+#include "cpumeter.h"
 #include "log.h"
 
 /* maximum input string length */
@@ -245,6 +246,28 @@ static bool nf_fastforward(uint32_t stack, uint32_t subid, uint32_t *retval)
 	return true;
 }
 
+/**
+ * NF_CPUMETER - give the CPU time from now on to a section of the
+ * program's work, for the CPU meter of the status overlay
+ * Stack arguments are:
+ * - section 0: free time, >=1: a part of the frame's work, by color
+ * Returns previous section
+ */
+static bool nf_cpumeter(uint32_t stack, uint32_t subid, uint32_t *retval)
+{
+	uint32_t section;
+
+	if (subid) {
+		/* unrecognized sub id -> no-op */
+		*retval = CpuMeter_GetSection();
+		return true;
+	}
+	section = STMemory_ReadLong(stack);
+	*retval = CpuMeter_SetSection(section);
+	LOG_TRACE(TRACE_NATFEATS, "NF_CPUMETER(%d -> %d)\n", *retval, section);
+	return true;
+}
+
 #if NF_COMMAND
 /**
  * NF_COMMAND - execute Hatari (cli / debugger) command
@@ -290,7 +313,8 @@ static const struct {
 	{ "NF_SHUTDOWN", true,  nf_shutdown },
 	{ "NF_EXIT",     false, nf_exit },
 	{ "NF_DEBUGGER", false, nf_debugger },
-	{ "NF_FASTFORWARD", false,  nf_fastforward }
+	{ "NF_FASTFORWARD", false,  nf_fastforward },
+	{ "NF_CPUMETER", false, nf_cpumeter }
 #if defined(__linux__)        
         ,{ "NF_SCSIDRV",  true, nf_scsidrv }
 #endif

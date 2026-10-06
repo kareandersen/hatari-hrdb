@@ -37,6 +37,7 @@ const char IoMemTabTT_fileid[] = "Hatari ioMemTabTT.c";
 #include "video.h"
 #include "stMemory.h"
 #include "debugui.h"
+#include "cpumeter.h"
 
 
 /**
@@ -194,6 +195,7 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_TT[] =
 	{ 0xff9200, SIZE_WORD, IoMemTabTT_ReadDIPSwitches, IoMem_VoidWrite },    /* DIP switches */
 
 	{ 0xffc123, SIZE_BYTE, IoMem_BusErrorOddReadAccess, DebugUI_Trigger },
+	{ 0xffc125, SIZE_BYTE, CpuMeter_ReadByte, CpuMeter_WriteByte },
 
 	{ 0xfffa01, SIZE_BYTE, MFP_GPIP_ReadByte, MFP_GPIP_WriteByte },
 	{ 0xfffa03, SIZE_BYTE, MFP_ActiveEdge_ReadByte, MFP_ActiveEdge_WriteByte },

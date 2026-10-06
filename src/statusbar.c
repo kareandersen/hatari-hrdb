@@ -55,6 +55,7 @@ const char Statusbar_fileid[] = "Hatari statusbar.c";
 #include "lilo.h"
 #include "sound.h"
 #include "dmaSnd.h"
+#include "cpumeter.h"
 
 #define DEBUG 0
 #if DEBUG
@@ -89,7 +90,23 @@ static struct {
 #define PANEL_RGB_LED_ON	124, 168, 124
 #define PANEL_RGB_LED_OFF	 48,  48,  48
 
+/* CPU meter: a bar as wide as this many characters stands for a frame,
+ * free time dark and each section of a program's work in its color,
+ * with the free time written into its right end */
+#define PANEL_CPU_W		20
+
 #define PANEL_MSG_LEN		48	/* message slot, in characters */
+#define PANEL_RGB_CPU_FREE	 40,  40,  40
+static const Uint8 PanelCpuColors[][3] = {	/* muted, as they fill most */
+	{ 172,  76,  68 },	/* 1: red */		/* of a busy bar */
+	{ 180, 124,  56 },	/* 2: orange */
+	{ 170, 162,  68 },	/* 3: yellow */
+	{  92, 156,  80 },	/* 4: green */
+	{  66, 148, 156 },	/* 5: cyan */
+	{  80,  98, 178 },	/* 6: blue */
+	{ 136,  88, 170 },	/* 7: purple */
+	{ 178,  92, 138 },	/* 8: pink */
+};
 
 /* Configurable status overlay panel: a strip drawn over the bottom of
  * the emulation area (no surface resize), item set chosen in the GUI,
@@ -296,6 +313,42 @@ static int Statusbar_PanelLed(SDL_Surface *surf, int x, int y, bool bOn)
 }
 
 /**
+ * Draw the CPU meter's bar for the last complete frame: its sections in
+ * the order they ran, from the VBL at the left to the next one at the
+ * right, free time dark.
+ */
+static void Statusbar_PanelCpuBar(SDL_Surface *surf, int x, int y, int w, int h,
+				  const cpumeter_part_t *parts, int count, uint32_t length)
+{
+	const Uint8 *rgb;
+	SDL_Rect r;
+	uint32_t end;
+	int i, x0, x1;
+
+	r.x = x; r.y = y; r.w = w; r.h = h;
+	SDL_FillRect(surf, &r, SDL_MapRGB(surf->format, PANEL_RGB_METER_FRAME));
+	w -= 2;
+	for (i = 0; i < count; i++)
+	{
+		end = (i + 1 < count) ? parts[i + 1].start : length;
+		if (end > length)
+			end = length;
+		x0 = (uint64_t)parts[i].start * w / length;
+		x1 = (uint64_t)end * w / length;
+		if (x1 <= x0)
+			continue;
+		r.x = x + 1 + x0; r.y = y + 1; r.w = x1 - x0; r.h = h - 2;
+		if (parts[i].section == 0)
+			SDL_FillRect(surf, &r, SDL_MapRGB(surf->format, PANEL_RGB_CPU_FREE));
+		else
+		{
+			rgb = PanelCpuColors[(parts[i].section - 1) % ARRAY_SIZE(PanelCpuColors)];
+			SDL_FillRect(surf, &r, SDL_MapRGB(surf->format, rgb[0], rgb[1], rgb[2]));
+		}
+	}
+}
+
+/**
  * Merge the panel rect with another update rect (or return the panel
  * rect alone). Uses a static, like the other statusbar rects.
  */
@@ -420,6 +473,36 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, int ytop, bool bDraw
 			Statusbar_PanelMeter(surf, xoff + PANEL_METER_W + 2, ymeter, meterh, PanelDmaShownR);
 		}
 		xoff += 2*(PANEL_METER_W + 2) + PanelFontW;
+	}
+	if (ConfigureParams.Screen.bOverlayCpuMeter)
+	{
+		const cpumeter_part_t *parts;
+		uint32_t length, free, line;
+		int count;
+		float frames;
+
+		/* only once a program uses the meter */
+		if (CpuMeter_GetFrame(&parts, &count, &length, &free, &line, &frames))
+		{
+			if (bDraw)
+			{
+				Statusbar_PanelCpuBar(surf, xoff, ymeter,
+						      PANEL_CPU_W * PanelFontW, meterh,
+						      parts, count, length);
+				/* free time as whole scanlines and the cycles
+				 * left over, or how many frames the last work
+				 * run took when it took more than one - in
+				 * the bar's right end, where the free time
+				 * usually is, to keep the panel narrow */
+				if (frames > 1.0f)
+					snprintf(buf, sizeof(buf), "x%.1f", frames);
+				else
+					snprintf(buf, sizeof(buf), "%uL+%u", free / line, free % line);
+				SDLGui_TextShadow(xoff + (PANEL_CPU_W - (int)strlen(buf))*PanelFontW - 2,
+						  ytext, buf);
+			}
+			xoff += (PANEL_CPU_W + 1)*PanelFontW;
+		}
 	}
 	if (ConfigureParams.Screen.bOverlayMessages)
 	{

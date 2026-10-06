@@ -464,6 +464,7 @@ const char Video_fileid[] = "Hatari video.c";
 #include "statusbar.h"
 #include "clocks_timings.h"
 #include "remotedebug.h"
+#include "cpumeter.h"
 #include "utils.h"
 
 
@@ -4972,6 +4973,7 @@ void Video_InterruptHandler_VBL ( void )
 	VBL_ClockCounter = CyclesGlobalClockCounter - PendingCyclesOver;
 	/* The VBL interrupt starts at "VblVideoCycleOffset" cycles since the start of the VBL */
 	VBL_ClockCounter -= pVideoTiming->VblVideoCycleOffset << nCpuFreqShift;
+	CpuMeter_VBL(VBL_ClockCounter);
 
 	/* Clear any key presses which are due to be de-bounced (held for one ST frame) */
 	Keymap_DebounceAllKeys();

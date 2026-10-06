@@ -38,6 +38,7 @@ const char Reset_fileid[] = "Hatari reset.c";
 #include "vdi.h"
 #include "nvram.h"
 #include "video.h"
+#include "cpumeter.h"
 #include "falcon/videl.h"
 #include "falcon/dsp.h"
 #include "debugcpu.h"
@@ -50,6 +51,8 @@ const char Reset_fileid[] = "Hatari reset.c";
  */
 static int Reset_ST(bool bCold)
 {
+	CpuMeter_Reset();
+
 	/* Ensure MMU has default values before calling memory_init() later */
 	STMemory_Reset ( bCold );
 

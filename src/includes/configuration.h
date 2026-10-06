@@ -318,6 +318,7 @@ typedef struct
   bool bOverlayMessages;
   bool bOverlayYm;
   bool bOverlayDma;
+  bool bOverlayCpuMeter;
   bool bMouseWarp;
   bool bMonitorFrame;
   bool bScanlineGrille;

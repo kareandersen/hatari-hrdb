@@ -23,12 +23,13 @@ const char DlgStatusOverlay_fileid[] = "Hatari dlgStatusOverlay.c";
 #define DLGSOVL_MSG       9
 #define DLGSOVL_YM        10
 #define DLGSOVL_DMA       11
-#define DLGSOVL_EXIT      13
+#define DLGSOVL_CPU       12
+#define DLGSOVL_EXIT      14
 
 /* The status overlay dialog: */
 static SGOBJ overlaydlg[] =
 {
-	{ SGBOX,      0, 0,  0, 0, 38,16, NULL },
+	{ SGBOX,      0, 0,  0, 0, 38,17, NULL },
 	{ SGTEXT,     0, 0, 12, 1, 14,1, "Status overlay" },
 	{ SGCHECKBOX, 0, 0,  2, 3, 15,1, "Show _overlay" },
 	{ SGTEXT,     0, 0,  2, 5,  6,1, "Items:" },
@@ -40,8 +41,9 @@ static SGOBJ overlaydlg[] =
 	{ SGCHECKBOX, 0, 0, 21, 8, 14,1, "_Messages" },
 	{ SGCHECKBOX, 0, 0, 21, 9, 14,1, "_YM levels" },
 	{ SGCHECKBOX, 0, 0, 21,10, 14,1, "DM_A levels" },
-	{ SGTEXT,     0, 0,  2,12, 34,1, "Toggle with the StatusOverlay key" },
-	{ SGBUTTON, SG_DEFAULT, 0, 9,14, 20,1, "Back to main menu" },
+	{ SGCHECKBOX, 0, 0,  4,11, 13,1, "_CPU meter" },
+	{ SGTEXT,     0, 0,  2,13, 34,1, "Toggle with the StatusOverlay key" },
+	{ SGBUTTON, SG_DEFAULT, 0, 9,15, 20,1, "Back to main menu" },
 	{ SGSTOP, 0, 0, 0,0, 0,0, NULL }
 };
 
@@ -58,6 +60,7 @@ static const struct {
 	{ DLGSOVL_MSG,    &ConfigureParams.Screen.bOverlayMessages },
 	{ DLGSOVL_YM,     &ConfigureParams.Screen.bOverlayYm },
 	{ DLGSOVL_DMA,    &ConfigureParams.Screen.bOverlayDma },
+	{ DLGSOVL_CPU,    &ConfigureParams.Screen.bOverlayCpuMeter },
 };
 
 /**

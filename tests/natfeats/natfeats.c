@@ -24,7 +24,7 @@
 static int nf_ok;
 
 /* handles for NF features that may be used more frequently */
-static long nfid_print, nfid_debugger, nfid_fastforward;
+static long nfid_print, nfid_debugger, nfid_fastforward, nfid_cpumeter;
 
 
 /* API documentation is in natfeats.h header */
@@ -40,6 +40,7 @@ int nf_init(void)
 		nfid_print = nf_id("NF_STDERR");
 		nfid_debugger = nf_id("NF_DEBUGGER");
 		nfid_fastforward = nf_id("NF_FASTFORWARD");
+		nfid_cpumeter = nf_id("NF_CPUMETER");
 	} else {
 		(void)Cconws("Native Features initialization failed!\r\n");
 	}
@@ -105,6 +106,15 @@ long nf_fastforward(long enabled)
 		(void)Cconws("NF_FASTFORWARD unavailable!\r\n");
 		return 0;
 	}
+}
+
+long nf_cpumeter(long section)
+{
+	/* quietly does nothing elsewhere, as it is called often */
+	if (nfid_cpumeter) {
+		return nf_call(nfid_cpumeter, section);
+	}
+	return 0;
 }
 
 static void halt_reset(int subid)
