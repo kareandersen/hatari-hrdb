@@ -89,6 +89,8 @@ static struct {
 #define PANEL_RGB_LED_ON	124, 168, 124
 #define PANEL_RGB_LED_OFF	 48,  48,  48
 
+#define PANEL_MSG_LEN		48	/* message slot, in characters */
+
 /* Configurable status overlay panel: a strip drawn over the bottom of
  * the emulation area (no surface resize), item set chosen in the GUI,
  * toggled with the StatusOverlay shortcut. */
@@ -349,10 +351,12 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, int ytop, bool bDraw
 			SDLGui_TextShadow(xoff, ytext, buf);
 		xoff += 8 * PanelFontW;
 	}
-	if (ConfigureParams.Screen.bOverlayRec &&
-	    (bRecordingYM || bRecordingWav || Avi_AreWeRecording()))
+	/* items keep their slots whether they show anything or not: the
+	 * panel is centered on its width, so a slot that came and went
+	 * would move everything else about */
+	if (ConfigureParams.Screen.bOverlayRec)
 	{
-		if (bDraw)
+		if (bDraw && (bRecordingYM || bRecordingWav || Avi_AreWeRecording()))
 		{
 			SDLGui_TextShadow(xoff, ytext, "REC");
 			Statusbar_PanelLed(surf, xoff + 3*PanelFontW + 1, ytext, true);
@@ -417,17 +421,19 @@ static int Statusbar_PanelWalk(SDL_Surface *surf, int xoff, int ytop, bool bDraw
 		}
 		xoff += 2*(PANEL_METER_W + 2) + PanelFontW;
 	}
-	if (ConfigureParams.Screen.bOverlayMessages && MessageList->msg[0])
+	if (ConfigureParams.Screen.bOverlayMessages)
 	{
 		int len = strlen(MessageList->msg);
-		if (len > 48)
-			len = 48;
-		if (bDraw)
+		if (len > PANEL_MSG_LEN)
+			len = PANEL_MSG_LEN;
+		if (bDraw && len)
 		{
 			Str_Copy(buf, MessageList->msg, len + 1);
 			SDLGui_TextShadow(xoff, ytext, buf);
 		}
-		xoff += len * PanelFontW;
+		/* as long as the longest message, so that a pause message
+		 * or the like does not move the other items */
+		xoff += PANEL_MSG_LEN * PanelFontW;
 	}
 	return xoff;
 }
