@@ -48,6 +48,7 @@ const char DebugUI_fileid[] = "Hatari debugui.c";
 #include "profile.h"
 #include "symbols.h"
 #include "vars.h"
+#include "cpumeter.h"
 
 FILE *debugOutput;
 
@@ -401,6 +402,47 @@ static int DebugUI_Screenshot(int argc, char *argv[])
 		ScreenSnapShot_SaveToFile(argv[1]);
 	else
 		return DebugUI_PrintCmdHelp(argv[0]);
+	return DEBUGGER_CMDDONE;
+}
+
+/**
+ * Command: Show or log the CPU meter's frames
+ */
+static int DebugUI_CpuMeter(int argc, char *argv[])
+{
+	const cpumeter_part_t *parts;
+	uint32_t length, end, free, line;
+	int i, count;
+	float frames;
+
+	if (argc == 3 && strcmp(argv[1], "log") == 0)
+	{
+		if (strcmp(argv[2], "off") == 0)
+			CpuMeter_SetLog(NULL);
+		else if (!CpuMeter_SetLog(argv[2]))
+			fprintf(stderr, "ERROR: can not open CPU meter log '%s'!\n", argv[2]);
+		return DEBUGGER_CMDDONE;
+	}
+	if (argc != 1)
+		return DebugUI_PrintCmdHelp(argv[0]);
+
+	if (!CpuMeter_GetFrame(&parts, &count, &length, &free, &line, &frames))
+	{
+		fprintf(debugOutput, "No program uses the CPU meter.\n");
+		return DEBUGGER_CMDDONE;
+	}
+	fprintf(debugOutput, "Last frame: %u cycles, %u free = %u lines + %u cycles"
+		" of %u (%u%%)\n", length, free, free / line, free % line, line,
+		(unsigned)((uint64_t)free * 100 / length));
+	for (i = 0; i < count; i++)
+	{
+		end = (i + 1 < count) ? parts[i + 1].start : length;
+		if (end > parts[i].start)
+			fprintf(debugOutput, "  section %u: %u cycles from %u\n",
+				parts[i].section, end - parts[i].start, parts[i].start);
+	}
+	if (frames > 1.0f)
+		fprintf(debugOutput, "Last work run: %.2f frames\n", frames);
 	return DEBUGGER_CMDDONE;
 }
 
@@ -986,6 +1028,18 @@ static const dbgcommand_t uicommand[] =
 	  "<directory> [-f]\n"
 	  "\tChange Hatari work directory. With '-f', directory is\n"
 	  "\tchanged only after all script files have been parsed.",
+	  false },
+	{ DebugUI_CpuMeter, NULL,
+	  "cpumeter", "",
+	  "show or log the CPU meter's frames",
+	  "[log <file>|log off]\n"
+	  "\tWithout arguments, show the last complete frame of the\n"
+	  "\tCPU meter that programs feed with NF_CPUMETER: the\n"
+	  "\tsections its CPU time went to, in the order they ran.\n"
+	  "\t'log <file>' writes every complete frame from then on to\n"
+	  "\t<file>, one line each: the frame's VBL number, its length\n"
+	  "\tin CPU cycles, and its parts as <section>:<cycles>.\n"
+	  "\t'log off' stops that.",
 	  false },
 	{ DebugUI_Echo, NULL,
 	  "echo", "",

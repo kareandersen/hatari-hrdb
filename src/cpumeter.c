@@ -22,6 +22,10 @@
   more than the meter can afford to leave out of the measurement.
   Reading the register gives the current section, so an interrupt can
   save and put back the one it interrupted.
+
+  For scripts, every complete frame can also be logged to a file, one
+  line each: the frame's VBL number, its length in CPU cycles, and its
+  parts in the order they ran as section:cycles.
 */
 const char CpuMeter_fileid[] = "Hatari cpumeter.c";
 
@@ -53,6 +57,8 @@ static uint32_t nShownLine;	/* CPU cycles per scanline */
 /* the current work run, from leaving section 0, and the last one done */
 static uint64_t RunStart;
 static float fRunFrames;
+
+static FILE *LogFile;		/* every complete frame goes here, if open */
 
 
 /**
@@ -149,6 +155,20 @@ void CpuMeter_VBL(uint64_t frame_start)
 		nShownFree = free;
 		nShownLine = nCyclesPerLine << nCpuFreqShift;
 
+		if (LogFile)
+		{
+			/* nVBLs is still the number of the frame that ended */
+			fprintf(LogFile, "%d %u", nVBLs, length);
+			for (i = 0; i < nParts; i++)
+			{
+				end = (i + 1 < nParts) ? Parts[i + 1].start : length;
+				if (end > Parts[i].start)
+					fprintf(LogFile, " %u:%u", Parts[i].section,
+						end - Parts[i].start);
+			}
+			fputc('\n', LogFile);
+		}
+
 		Parts[0].start = 0;
 		Parts[0].section = nSection;
 		nParts = 1;
@@ -157,7 +177,27 @@ void CpuMeter_VBL(uint64_t frame_start)
 }
 
 /**
+ * Log every complete frame from now on to 'path', or with NULL, stop
+ * logging. Returns false if the file could not be opened.
+ *
+ * The log needs no closing on exit: exit() flushes and closes it.
+ */
+bool CpuMeter_SetLog(const char *path)
+{
+	if (LogFile)
+	{
+		fclose(LogFile);
+		LogFile = NULL;
+	}
+	if (!path)
+		return true;
+	LogFile = fopen(path, "w");
+	return LogFile != NULL;
+}
+
+/**
  * Forget it all, e.g. on reset, until a program uses the meter again.
+ * Logging goes on: the frames simply start over.
  */
 void CpuMeter_Reset(void)
 {

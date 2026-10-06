@@ -25,6 +25,7 @@ extern void CpuMeter_WriteByte(void);
 extern void CpuMeter_ReadByte(void);
 extern void CpuMeter_VBL(uint64_t frame_start);
 extern void CpuMeter_Reset(void);
+extern bool CpuMeter_SetLog(const char *path);
 extern bool CpuMeter_GetFrame(const cpumeter_part_t **parts, int *count,
 			      uint32_t *length, uint32_t *free_cycles,
 			      uint32_t *line_cycles, float *run_frames);
