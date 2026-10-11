@@ -3311,6 +3311,7 @@ if ( CycInt_From_Opcode )		/* TEMP : to update CYCLES_COUNTER_VIDEO during an op
 	if (Config_IsMachineFalcon())
 	{
 		VIDEL_VideoRasterHBL();
+		VIDEL_StealBusCycles();
 	}
 	else if (Config_IsMachineTT())
 	{

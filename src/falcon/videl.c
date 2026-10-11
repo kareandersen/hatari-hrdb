@@ -77,6 +77,9 @@ const char VIDEL_fileid[] = "Hatari videl.c";
 #include "stMemory.h"
 #include "tos.h"
 #include "videl.h"
+#include "dsp.h"
+#include "m68000.h"
+#include "clocks_timings.h"
 #include "video.h"				/* for bUseHighRes variable */
 #include "vdi.h"				/* for bUseVDIRes variable */
 
@@ -738,6 +741,73 @@ void VIDEL_VideoRasterHBL(void)
 
 	/* TODO: VFC is incremented every half line, here, we increment it every line */
 	videl.vertFreqCounter++;
+}
+
+
+/*-----------------------------------------------------------------------*/
+/**
+ * Approximate the bus cycles the Videl's DMA steals from the CPU.
+ *
+ * The Videl fetches each displayed line in bursts of 17 longs (68 bytes).
+ * Measured on a Falcon (Peregrin's EmBench contention sweep), one burst
+ * keeps the CPU off the bus for about 43 master clock ticks on VGA and
+ * 45 on RGB/TV (38 for the burst itself, the rest the DRAM precharge the
+ * CPU pays to reopen its row afterwards). So the load is set by the line
+ * width in bytes, the number of displayed scanlines and the frame rate:
+ * from ~1% in ST-High to ~38% in 640x480x8 or 320x240x16 on VGA.
+ * In double-line modes the Videl re-fetches the line on both scanlines,
+ * so (VDE-VDB)/2 scanlines always fetch.
+ *
+ * This is not cycle precise: the stolen time of a whole frame is spread
+ * evenly over Hatari's emulated lines and charged in one piece per HBL,
+ * which keeps the CPU's and the DSP's average throughput right without
+ * modelling individual bursts. The DSP keeps running meanwhile, as it
+ * has its own bus.
+ */
+void VIDEL_StealBusCycles(void)
+{
+	static int remainder;		/* fraction of a cycle carried to the next line */
+	static int prev_cycles = -1;
+	int linewidth = IoMem_ReadWord(0xff8210) & 0x03ff;
+	int vdb = IoMem_ReadWord(0xff82a8) & 0x07ff;
+	int vde = IoMem_ReadWord(0xff82aa) & 0x07ff;
+	int bursts, lines, ticks_per_burst, cycles;
+	int64_t total;
+
+	if (linewidth == 0 || vde <= vdb || nScanlinesPerFrame <= 0)
+		return;
+
+	bursts = (linewidth * 2 + 67) / 68;
+	lines = (vde - vdb) / 2;
+	ticks_per_burst = (IoMem_ReadWord(0xff82c0) & 4) ? 43 : 45;
+
+	/* Master clock ticks stolen per frame, converted to cycles of the
+	 * emulated CPU clock and spread over the emulated lines of a frame */
+	total = (int64_t)bursts * lines * ticks_per_burst;
+	total = total * MachineClocks.CPU_Freq_Emul / MachineClocks.MCLK_Freq;
+
+	if (total / nScanlinesPerFrame != prev_cycles)
+	{
+		prev_cycles = (int)(total / nScanlinesPerFrame);
+		LOG_TRACE(TRACE_VIDEL, "Videl : bus steal %d bursts x %d lines x %d ticks -> %d cpu cycles per emulated line (%d lines of %d cycles)\n",
+		          bursts, lines, ticks_per_burst, prev_cycles, nScanlinesPerFrame, nCyclesPerLine);
+	}
+
+	total += remainder;
+	cycles = (int)(total / nScanlinesPerFrame);
+	remainder = (int)(total % nScanlinesPerFrame);
+	if (cycles <= 0)
+		return;
+	if (cycles > nCyclesPerLine * 9 / 10)		/* leave the CPU some bus whatever the registers say */
+		cycles = nCyclesPerLine * 9 / 10;
+
+	if (CpuRunCycleExact)
+		M68000_AddCycles_CE(cycles);
+	else
+		M68000_AddCycles(cycles);
+
+	if (bDspEnabled)
+		DSP_Run(2 * cycles);
 }
 
 
