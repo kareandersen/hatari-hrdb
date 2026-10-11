@@ -87,6 +87,7 @@
 #include "log.h"
 #include "memorySnapShot.h"
 #include "scc.h"
+#include "tty.h"
 #include "clocks_timings.h"
 #include "m68000.h"
 #include "cycles.h"
@@ -496,6 +497,10 @@ static void SCC_Init_Channel ( int Channel , bool *pConfEnableScc , char *InFile
 	{
 		*pConfEnableScc = false;
 	}
+
+	/* Remember the settings of real tty devices so SCC_UnInit() can restore them */
+	Tty_SaveSettings ( *pReadHandle );
+	Tty_SaveSettings ( *pWriteHandle );
 }
 
 
@@ -536,6 +541,11 @@ void SCC_UnInit(void)
 
 	for ( Channel = 0; Channel < 2; Channel++ )
 	{
+		Tty_RestoreSettings ( SCC.Chn[Channel].ReadHandle_Serial );
+		Tty_RestoreSettings ( SCC.Chn[Channel].WriteHandle_Serial );
+		Tty_RestoreSettings ( SCC.Chn[Channel].ReadHandle_Lan );
+		Tty_RestoreSettings ( SCC.Chn[Channel].WriteHandle_Lan );
+
 		if ( SCC.Chn[Channel].ReadHandle_Serial >= 0 )
 			close(SCC.Chn[Channel].ReadHandle_Serial);
 		if ( ( SCC.Chn[Channel].WriteHandle_Serial != SCC.Chn[Channel].ReadHandle_Serial )
@@ -719,7 +729,9 @@ static void SCC_Serial_Set_BaudAttr ( int handle, speed_t new_speed )
 {
 	struct termios options;
 
-	if (handle < 0)
+	/* Only reprogram real tty devices, never the terminal Hatari runs on
+	 * (e.g. when the SCC output file is /dev/stderr or /dev/tty) */
+	if (!Tty_CanConfigure(handle))
 		return;
 
 	memset(&options, 0, sizeof(options));

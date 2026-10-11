@@ -22,6 +22,7 @@ const char RS232_fileid[] = "Hatari rs232.c";
 #include "m68000.h"
 #include "mfp.h"
 #include "rs232.h"
+#include "tty.h"
 
 /* AmigaOS has termios.h, but no tcsetattr() and friends - d'oh! */
 #if !defined(HAVE_TCSETATTR)
@@ -187,10 +188,11 @@ static bool RS232_OpenCOMPort(void)
 			setvbuf(RS232_MFP.WriteFile, NULL, _IONBF, 0);
 
 			RS232_MFP.Write_fd = fileno ( RS232_MFP.WriteFile );
-			if ( isatty ( RS232_MFP.Write_fd ) )
-				RS232_MFP.Write_fd_IsATTY = true;
-			else
-				RS232_MFP.Write_fd_IsATTY = false;
+			/* Only treat real tty devices as configurable, never the
+			 * terminal Hatari itself runs on, and remember their
+			 * settings so RS232_CloseCOMPort() can restore them */
+			RS232_MFP.Write_fd_IsATTY = Tty_CanConfigure ( RS232_MFP.Write_fd );
+			Tty_SaveSettings ( RS232_MFP.Write_fd );
 #if HAVE_TERMIOS_H
 			/* First set the output parameters to "raw" mode */
 			if (!RS232_SetRawMode ( RS232_MFP.Write_fd , RS232_MFP.Write_fd_IsATTY ))
@@ -219,10 +221,11 @@ static bool RS232_OpenCOMPort(void)
 			setvbuf(RS232_MFP.ReadFile, NULL, _IONBF, 0);
 
 			RS232_MFP.Read_fd = fileno ( RS232_MFP.ReadFile );
-			if ( isatty ( RS232_MFP.Read_fd ) )
-				RS232_MFP.Read_fd_IsATTY = true;
-			else
-				RS232_MFP.Read_fd_IsATTY = false;
+			/* Only treat real tty devices as configurable, never the
+			 * terminal Hatari itself runs on, and remember their
+			 * settings so RS232_CloseCOMPort() can restore them */
+			RS232_MFP.Read_fd_IsATTY = Tty_CanConfigure ( RS232_MFP.Read_fd );
+			Tty_SaveSettings ( RS232_MFP.Read_fd );
 #if HAVE_TERMIOS_H
 			/* Now set the input parameters to "raw" mode */
 			if (!RS232_SetRawMode ( RS232_MFP.Read_fd, RS232_MFP.Read_fd_IsATTY ))
@@ -260,11 +263,13 @@ static void RS232_CloseCOMPort(void)
 	 */
 	if ( RS232_MFP.WriteFile )
 	{
+		Tty_RestoreSettings ( RS232_MFP.Write_fd );
 		File_Close ( RS232_MFP.WriteFile );
 		RS232_MFP.WriteFile = NULL;
 	}
 	if ( RS232_MFP.ReadFile )
 	{
+		Tty_RestoreSettings ( RS232_MFP.Read_fd );
 		File_Close( RS232_MFP.ReadFile );
 		RS232_MFP.ReadFile = NULL;
 	}
