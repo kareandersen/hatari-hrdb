@@ -237,7 +237,11 @@ void DSP_Run(int nHostCycles)
 
 	DSP_CyclesGlobalClockCounter = CyclesGlobalClockCounter;
 
-	save_cycles += nHostCycles * 2;
+	/* nHostCycles is already in DSP clock cycles: every caller multiplies
+	 * the CPU cycles by DSP_CPU_FREQ_RATIO (32 MHz DSP vs 16 MHz CPU).
+	 * Doubling it again here ran the DSP at 64 MHz, twice as fast as the
+	 * real one relative to the 68030. */
+	save_cycles += nHostCycles;
 
 	if (dsp_core.running == 0)
 		return;
@@ -857,7 +861,6 @@ void DSP_HandleReadAccess(void)
 {
 	uint32_t addr;
 	uint8_t value;
-	bool multi_access = false;
 
 	for (addr = IoAccessBaseAddress; addr < IoAccessBaseAddress+nIoMemAccessSize; addr++)
 	{
@@ -867,9 +870,11 @@ void DSP_HandleReadAccess(void)
 		/* this value prevents TOS from hanging in the DSP init code */
 		value = 0xff;
 #endif
-		if (multi_access == true)
-			M68000_WaitState(4);
-		multi_access = true;
+		/* Every byte access to the host port is synchronised to the DSP
+		 * and costs the 68030 wait states, not only the 2nd+ byte of a
+		 * multi-byte access: software sends bursts without handshake,
+		 * relying on the DSP keeping up with that access rate */
+		M68000_WaitState(4);
 
 		Dprintf(("HWget_b(0x%08x)=0x%02x at 0x%08x\n", addr, value, m68k_getpc()));
 		IoMem_WriteByte(addr, value);
@@ -884,7 +889,6 @@ void DSP_HandleReadAccess(void)
 void DSP_HandleWriteAccess(void)
 {
 	uint32_t addr;
-	bool multi_access = false;
 
 	for (addr = IoAccessBaseAddress; addr < IoAccessBaseAddress+nIoMemAccessSize; addr++)
 	{
@@ -893,8 +897,6 @@ void DSP_HandleWriteAccess(void)
 		Dprintf(("HWput_b(0x%08x,0x%02x) at 0x%08x\n", addr, value, m68k_getpc()));
 		dsp_core_write_host(addr-DSP_HW_OFFSET, value);
 #endif
-		if (multi_access == true)
-			M68000_WaitState(4);
-		multi_access = true;
+		M68000_WaitState(4);
 	}
 }
