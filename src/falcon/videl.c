@@ -520,6 +520,36 @@ void VIDEL_Falcon_ShiftMode_WriteWord(void)
 }
 
 /**
+ *  Read Horizontal Hold Counter (HHC)
+ *
+ *  On the Falcon HHC counts video clocks along the current line and wraps
+ *  when it reaches HHT (+1); software uses it to change the sync registers
+ *  (VMD, HHT) right at a line's end. Hatari does not run the Videl at the
+ *  video clock, so derive the count from the CPU cycle position within the
+ *  current emulated line, scaled to the HHT period: coarse, but it advances
+ *  monotonically along the line and wraps at each line start.
+ */
+void VIDEL_HHC_ReadWord(void)
+{
+	int FrameCycles, HblCounterVideo, LineCycles;
+	Uint16 hht, hhc;
+
+	Video_GetPosition(&FrameCycles, &HblCounterVideo, &LineCycles);
+
+	hht = IoMem_ReadWord(0xff8282) & 0x1ff;
+	if (LineCycles < 0)
+		LineCycles = 0;
+	if (nCyclesPerLine > 0 && LineCycles < nCyclesPerLine)
+		hhc = (Uint16)(((Uint32)LineCycles * (hht + 1)) / (Uint32)nCyclesPerLine);
+	else
+		hhc = hht;
+
+	IoMem_WriteWord(0xff8280, hhc);
+	LOG_TRACE(TRACE_VIDEL, "Videl : $ff8280 Horizontal Hold Counter (HHC) read: 0x%04x (line cycle %d/%d)\n",
+	          hhc, LineCycles, nCyclesPerLine);
+}
+
+/**
  *  Write Horizontal Hold Counter (HHC)
  */
 void VIDEL_HHC_WriteWord(void)

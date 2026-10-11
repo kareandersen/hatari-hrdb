@@ -270,7 +270,7 @@ const INTERCEPT_ACCESS_FUNC IoMemTable_Falcon[] =
 	{ 0xff8266, SIZE_WORD, IoMem_ReadWithoutInterception, VIDEL_Falcon_ShiftMode_WriteWord }, /* Falcon shift mode */
 	{ 0xff8268, 24       , IoMem_VoidRead_00, IoMem_VoidWrite },                            /* No bus errors here : return 0 not ff */
 
-	{ 0xff8280, SIZE_WORD, IoMem_ReadWithoutInterception, VIDEL_HHC_WriteWord },            /* HHC : Horizontal Hold Counter */
+	{ 0xff8280, SIZE_WORD, VIDEL_HHC_ReadWord, VIDEL_HHC_WriteWord },            /* HHC : Horizontal Hold Counter */
 	{ 0xff8282, SIZE_WORD, IoMem_ReadWithoutInterception, VIDEL_HHT_WriteWord },            /* HHT : Horizontal Hold Timer */
 	{ 0xff8284, SIZE_WORD, IoMem_ReadWithoutInterception, VIDEL_HBB_WriteWord },            /* HBB : Horizontal Border Begin */
 	{ 0xff8286, SIZE_WORD, IoMem_ReadWithoutInterception, VIDEL_HBE_WriteWord },            /* HBE : Horizontal Border End */

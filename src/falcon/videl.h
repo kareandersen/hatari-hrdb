@@ -37,6 +37,7 @@ extern void VIDEL_HorScroll64_WriteByte(void);
 extern void VIDEL_HorScroll65_WriteByte(void);
 extern void VIDEL_ST_ShiftModeWriteByte(void);
 extern void VIDEL_Falcon_ShiftMode_WriteWord(void);
+extern void VIDEL_HHC_ReadWord(void);
 extern void VIDEL_HHC_WriteWord(void);
 extern void VIDEL_HHT_WriteWord(void);
 extern void VIDEL_HBB_WriteWord(void);
